@@ -1,0 +1,54 @@
+{
+    "meta":{
+        "execute":true,
+        "dataset_path":"",
+        "training_dir_name":"",
+        "testing_dir_name":"",
+        "use_ffcv": false,
+        "ffcv_train_name":"",
+        "ffcv_val_name":"",
+        "ffcv_test_name":""
+    },
+    "model_spec":{
+        "model": "resnet",
+        "name":"Resnet18_none",
+        "__spec_instruc_for_model_args": "grayscale",
+        "model_args":[false],
+        "task":"image_classification"
+    },
+    "data":{
+        "testing_dir_name":"",
+        "train_fraction":0.8,
+        "subset_fraction":1.0
+    },
+    "experiment":{
+        "general":{
+            "bz":128,
+            "epoch":120,
+            "lr":0.1,
+            "early_stop":false,
+            "es_penalty":0.0
+        },
+        "optimizer":{
+            "optimizer":"sgd",
+            "weight_decay":1e-4,
+            "momentum":0.9,
+            "dampening":0.0
+        },
+        "scheduler":{
+            "lr_scheduler": "multistep",
+            "mile_stones":[60,90],
+            "gamma":0.1
+        }
+
+    },
+    "augmentations":{
+        "brightness":0.0,
+        "hue":0.0,
+        "contrast":0.0,
+        "saturation":0.0,
+        "kernel_size":[],
+        "sigms":[],
+        "grayscale":true
+    }
+}

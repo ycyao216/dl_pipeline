@@ -1,0 +1,58 @@
+{
+    "meta":{
+        "execute":true,
+        "visualize":true,
+        "dataset_path":"./",
+        "training_dir_name":"train",
+        "validating_dir_name":"validation",
+        "testing_dir_name":"test",
+        "use_ffcv": false,
+        "ffcv_train_name":"pointnet_seg_train_data.beton",
+        "ffcv_val_name":"pointnet_seg_val_data.beton",
+        "ffcv_test_name":"pointnet_seg_test_data.beton"
+    },
+    "model_spec":{
+        "model": "PointNet_pose",
+        "name":"PointNet_pose_test",
+        "__spec_instruc_for_model_args": "point_size",
+        "model_args":[2048],
+        "task":"pose_estimation_6d"
+    },
+    "data":{
+        "train_fraction":1.0,
+        "subset_fraction":1.0
+    },
+    "experiment":{
+        "general":{
+            "bz":64,
+            "epoch":60,
+            "lr":1e-3,
+            "early_stop":false,
+            "es_penalty":0.0
+        },
+        "optimizer":{
+            "optimizer":"adam",
+            "weight_decay":1e-3,
+            "momentum":0.9,
+            "dampening":0.0
+        },
+        "scheduler":{
+            "lr_scheduler": "multistep",
+            "mile_stones":[20,40],
+            "gamma":0.5
+        }
+
+    },
+    "augmentations":{
+        "brightness":0.0,
+        "hue":0.0,
+        "contrast":0.0,
+        "saturation":0.0,
+        "kernel_size":[],
+        "sigms":[],
+        "grayscale":false
+    },
+    "special":{
+        "point_size":2048
+    }
+}
