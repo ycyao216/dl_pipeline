@@ -20,4 +20,6 @@ class cat_class_metric:
         self.correct_preds += (predicted == label).sum()
 
     def epoch_result(self, dataset_size):
-        return self.correct_preds.item() / dataset_size
+        retval = self.correct_preds.item() / dataset_size
+        self.correct_preds = 0
+        return retval

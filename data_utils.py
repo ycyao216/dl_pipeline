@@ -18,6 +18,7 @@ import torch
 import torch.nn as nn
 import os
 import numpy as np
+import pathlib
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -67,9 +68,9 @@ class GaussianWrapper(nn.Module):
 
 
 def get_dataloader(master_config, config):
-    data_base_root = os.path.join(
+    data_base_root = pathlib.Path(os.path.join(
         master_config["database_root"], config["meta"]["dataset_path"]
-    )
+        )).resolve()
     dataset_constr = master_config["datasets"][config["model_spec"]["task"]]
     training_dataset, testing_dataset, validating_dataset = None, None, None
     ffcv_train_path = os.path.join(data_base_root, config["meta"]["ffcv_train_name"])
@@ -81,7 +82,7 @@ def get_dataloader(master_config, config):
     ffcv_datawriter = master_config["ffcv_writer"][config["model_spec"]["task"]](config)
     ffcv_dataloader = master_config["ffcv_loader"][config["model_spec"]["task"]](config)
 
-    if ~config["meta"]["use_ffcv"]:
+    if config["meta"]["use_ffcv"] == False:
         training_dataset = dataset_constr(config, train=0)
         testing_dataset = dataset_constr(config, train=2)
         validating_dataset = testing_dataset
@@ -150,9 +151,9 @@ def get_dataloader(master_config, config):
             testing_dataset = dataset_constr(config, train=2)
             non_label_writer.from_indexed_dataset(testing_dataset)
 
-        train_loader = ffcv_dataloader.make_loader(ffcv_train_path)
-        val_loader = ffcv_dataloader.make_loader(ffcv_val_path)
-        test_loader = ffcv_dataloader.make_loader(ffcv_test_path)
+        train_loader = ffcv_dataloader.make_loader(ffcv_train_path,config)
+        val_loader = ffcv_dataloader.make_loader(ffcv_val_path,config)
+        test_loader = ffcv_dataloader.make_loader(ffcv_test_path,config)
         return train_loader, val_loader, test_loader
 
     train_loader = torch.utils.data.DataLoader(

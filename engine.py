@@ -9,7 +9,7 @@ import tqdm
 import pickle
 import os
 import optuna
-
+import ffcv 
 
 def initialize_weights(m):
     if isinstance(m, nn.Conv2d):
@@ -113,7 +113,7 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     return network, criterion, metric, optimizer, lr_scheduler, run_function
 
 
-def run_model(data_loader, optimizer, model, criterion, metric, configs, is_train=True):
+def run_model(data_loader, dataset_size, optimizer, model, criterion, metric, configs, is_train=True):
     """Train or evaluate a model
 
     Parameters
@@ -137,7 +137,6 @@ def run_model(data_loader, optimizer, model, criterion, metric, configs, is_trai
         (Cumulative loss over the entire dataset, cumulative correct predictions)
     """
     cumulative_loss = 0
-    dataset_size = len(data_loader.dataset)
     for batch, labels in data_loader:
         if is_train == 0:
             optimizer.zero_grad(set_to_none=True)
@@ -194,6 +193,20 @@ def train_model(
     # Initialize last loss to a large number
     last_loss = float(1e10)
     train_loader, val_loader, test_loader = dataloaders
+    tadl, vdl, tsdl = 0,0,0
+    if isinstance(train_loader, torch.utils.data.DataLoader):
+        tadl = len(train_loader.dataset)
+    elif isinstance(train_loader, ffcv.loader.loader.Loader):
+        tadl = len(train_loader.indices)
+    if isinstance(val_loader, torch.utils.data.DataLoader):
+        vdl = len(val_loader.dataset)
+    elif isinstance(val_loader, ffcv.loader.loader.Loader):
+        vdl = len(val_loader.indices)
+    if isinstance(test_loader, torch.utils.data.DataLoader):
+        tsdl = len(test_loader.dataset)
+    elif isinstance(test_loader, ffcv.loader.loader.Loader):
+        tsdl = len(test_loader.indices)    
+    
     msg = (
         "Started training for "
         + configs["model_spec"]["model"]
@@ -253,7 +266,7 @@ def train_model(
             break
         # Train the model
         train_loss, train_acc = run_model(
-            train_loader, optimizer, model, criterion, metric, configs, is_train=0
+            train_loader, tadl, optimizer, model, criterion, metric, configs, is_train=0
         )
         msg = output_msg(
             train_loss, train_acc, data["epochs"], is_val=False, periodic=5
@@ -269,7 +282,7 @@ def train_model(
             # Evaluate model
             model.eval()
             val_loss, val_acc = run_model(
-                val_loader, optimizer, model, criterion, metric, configs, is_train=1
+                val_loader, vdl, optimizer, model, criterion, metric, configs, is_train=1
             )
             # Print results every 5 epochs.
             msg = output_msg(val_loss, val_acc, data["epochs"], is_val=True, periodic=5)
@@ -284,7 +297,7 @@ def train_model(
             last_loss = val_loss
             data["epochs"] = ep + 1
             if trial is not None:
-                trial.report(val_loss)
+                trial.report(val_loss, ep+1)
 
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
@@ -303,11 +316,11 @@ def train_model(
     with torch.no_grad():
         # Test the model on test set
         test_loss, test_acc = run_model(
-            test_loader, optimizer, model, criterion, metric, configs, is_train=1
+            test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=1
         )
-        outputs, _ = run_model(
-            test_loader, optimizer, model, criterion, metric, configs, is_train=2
-        )
+        # outputs, _ = run_model(
+        #     test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=2
+        # )
         msg = output_msg(test_loss, test_acc, data["epochs"])
         print(msg)
     print("Training finished")

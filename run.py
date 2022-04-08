@@ -64,7 +64,10 @@ def visualize_all(main_config, model_config, args):
 
 
 def apply_pre_processing(main_config, model_config, args):
-    func = main_config["pre_preocessing"][model_config["model_spec"]["task"]]
+    try:
+        func = main_config["pre_preocessing"][model_config["model_spec"]["task"]]
+    except Exception as e: 
+        func = None 
     if func is not None:
         func(main_config, model_config, args)
 
