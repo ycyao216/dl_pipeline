@@ -75,39 +75,36 @@ class Transformer_unit(nn.Module):
         x = self.ffn(self.attention(x))
         return x
 
-
 class Vit_custom(nn.Module):
     """Some Information about Vit_custom"""
 
     def __init__(
         self,
-        image_size,
-        patch_size,
-        encoding_dim,
-        mlp_dimension,
-        trans_layer_count,
-        transformer_heads,
-        class_num,
-        drop_out_rate,
+        config
     ):
         super(Vit_custom, self).__init__()
-        self.image_size = image_size
-        self.patch_size = patch_size
-        self.N = image_size * image_size // (patch_size ** 2)
-        self.D = encoding_dim
+        transformer_heads = config["model_spec"]["model_args"]["transformer_heads"]
+        mlp_dimension = config["model_spec"]["model_args"]["mlp_dimension"]
+        class_num = config["model_spec"]["model_args"]["class_num"]
+        self.image_size = config["model_spec"]["model_args"]["image_size"]
+        self.patch_size = config["model_spec"]["model_args"]["patch_size"]
+        self.N = self.image_size * self.image_size // (self.patch_size ** 2)
+        self.D = config["model_spec"]["model_args"]["encoding_dim"]
         self.pose_embedding = nn.Parameter(torch.randn((1, self.N + 1, self.D)))
         self.class_token = nn.Parameter(torch.randn((1, self.D)))
-        self.embedding_layer = nn.Linear(patch_size * patch_size * 3, self.D)
+        self.embedding_layer = nn.Linear(self.patch_size * self.patch_size * 3, self.D)
+        self.drop_out_rate= config["model_spec"]["model_args"]["drop_out_rate"]
+
         transformers = []
-        for i in range(trans_layer_count):
+        for i in range(config["model_spec"]["model_args"]["trans_layer_count"]):
             transformers.append(
                 Transformer_unit(
-                    transformer_heads, self.D, mlp_dimension, drop_out_rate
+                    transformer_heads, self.D, mlp_dimension, self.drop_out_rate
                 )
             )
         self.transformers = nn.Sequential(*transformers)
         self.MLP_head = nn.Linear(self.D, class_num)
-        self.embed_dropout = nn.Dropout(p=drop_out_rate)
+        self.embed_dropout = nn.Dropout(p=self.drop_out_rate)
         self.flatten_to_patches = Rearrange(
             "batch chan (p_per_w patch1) (p_per_h patch2) -> batch (p_per_w p_per_h) (patch1 patch2 chan)",
             patch1=self.patch_size,

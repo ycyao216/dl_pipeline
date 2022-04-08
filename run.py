@@ -7,13 +7,16 @@ import torchvision
 import utils
 import config_parser
 import argparse
+import optuna_utils
+import optuna
+import pandas 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 master_config_path = "./main_config.pkl"
 
 
-def cross_validation(main_config, model_config, args):
+def cross_validation(main_config, model_config, args, trial=None):
     if model_config["meta"]["execute"] == False:
         print(
             "Skipping: "
@@ -21,14 +24,14 @@ def cross_validation(main_config, model_config, args):
             + "\n=============================\n"
         )
         return None
-    m, criterion, metric, optimizer, lr_scheduler = prepare_model(
+    m, criterion, metric, optimizer, lr_scheduler, run_func = prepare_model(
         device, main_config, model_config, args
     )
     train_data_loader, valid_data_loader, test_data_loader = get_dataloader(
         main_config, model_config
     )
     m = m.to(device)
-    outputs = train_model(
+    loss = train_model(
         m,
         criterion,
         metric,
@@ -36,10 +39,12 @@ def cross_validation(main_config, model_config, args):
         lr_scheduler,
         device,
         (train_data_loader, valid_data_loader, test_data_loader),
+        run_func,
         model_config,
         args,
+        trial
     )
-    return outputs
+    return loss
 
 
 def visualize_all(main_config, model_config, args):
@@ -82,6 +87,22 @@ def prepend_root_path(root_path, config_obj):
     )
 
 
+def hyper_tuning(main_config, model_config, args):
+    def objective(trial):
+        optuna_utils.optuna_config(trial,model_config=model_config)
+        loss = cross_validation(main_config=main_config, model_config=model_config, args=args, trial=trial)
+        return loss 
+    save_name = model_config["optuna"]["save_name"]
+    storage = model_config["optuna"]["storage"]
+    study = optuna.create_study(direction="minimize", 
+                                sampler=optuna.samplers.TPESampler(), 
+                                pruner=optuna.pruners.MedianPruner(),
+                                study_name=save_name,
+                                storage=storage,
+                                load_if_exists=True)
+    study.optimize(objective, n_trials = model_config["experiment"]["general"]["epoch"])
+    return study 
+
 def main(args):
     if not os.path.exists(args.result_dir):
         os.mkdir(args.result_dir)
@@ -90,7 +111,7 @@ def main(args):
     model_config_dir = args.model_config_dir
     main_config = utils.load_pickle(master_config_path)
     data_root = main_config["database_root"]
-    if args.mode == 2 or args.mode == 0 or args.mode == 3:
+    if args.mode == 2 or args.mode == 0 or args.mode == 3 or args.mode == 4:
         for model_config_pth in os.listdir(model_config_dir):
             model_file = os.path.join(model_config_dir, model_config_pth)
             with open(model_file, "r") as read_file:
@@ -99,13 +120,19 @@ def main(args):
                 apply_pre_processing(main_config, model_config, args)
                 if args.mode == 3:
                     visualize_all(main_config, model_config, args)
+                elif args.mode == 4:
+                    print("Hyperparameter tuning started. Model weight saves may not be the best model")
+                    study = hyper_tuning(main_config, model_config, args)
+                    print(study.best_params)
+                    save_name = model_config["optuna"]["dataframe_name"]
+                    df = study.trials_dataframe()
+                    df.to_csv(save_name)
                 else:
                     outputs = cross_validation(main_config, model_config, args)
 
     if args.mode == 2 or args.mode == 1:
         utils.generate_all_plots(args.result_dir, args.save_dir)
         utils.generate_all_summary(args.result_dir, args.save_dir, args.summary_name)
-
 
 config_parser.create_pickle_file()
 parser = argparse.ArgumentParser()

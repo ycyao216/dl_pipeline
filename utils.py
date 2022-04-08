@@ -32,17 +32,21 @@ def select_lr_sheculer(configs, optimizer):
 
 
 def select_optimizer(configs, network):
+    weights = [n.parameters() for n in network]
+    concatenated = []
+    for i in weights:
+        concatenated += list(i)
     if "sgd" in configs["experiment"]["optimizer"]["optimizer"].lower():
         optimizer = torch.optim.SGD(
-            [n.parameters() for n in network],
-            lr=configs["lr"],
+            concatenated,
+            lr=configs["experiment"]["general"]["lr"],
             weight_decay=configs["experiment"]["optimizer"]["weight_decay"],
             momentum=configs["experiment"]["optimizer"]["momentum"],
             dampening=configs["experiment"]["optimizer"]["dampening"],
         )
     elif "adam" in configs["experiment"]["optimizer"]["optimizer"].lower():
         optimizer = torch.optim.Adam(
-            [n.parameters() for n in network],
+            concatenated,
             lr=configs["experiment"]["general"]["lr"],
             weight_decay=configs["experiment"]["optimizer"]["weight_decay"],
         )

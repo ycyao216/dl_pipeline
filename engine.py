@@ -1,12 +1,14 @@
 from asyncio import run_coroutine_threadsafe
+from distutils.command.config import config
 import torch
 import copy
 from models import *
 import torch.nn as nn
-from .utils import *
+from utils import *
 import tqdm
 import pickle
 import os
+import optuna
 
 
 def initialize_weights(m):
@@ -37,7 +39,7 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     model_name = configs["model_spec"]["model"]
     model_constructor = program_config["model_map"][model_name]
     model_arguments = configs["model_spec"]["model_args"]
-    network = model_constructor(*model_arguments)
+    network = model_constructor(configs)
     network.apply(initialize_weights)
     checkpoint_good_flag = True
     checkpoint_path = (
@@ -50,6 +52,7 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
         print("Cannot load checkpoint:" + checkpoint_path)
         checkpoint_good_flag = False
     try:
+        #@FIXME: Won't work with two model nerf
         network.load_state_dict(checkpoint["_model_state"])
         out_msg = (
             "=============================\n"
@@ -77,7 +80,7 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     metric = metric_constructor()
     network.to(device)
     # Set up optimizer
-    optimizer = select_optimizer(configs, network)
+    optimizer = select_optimizer(configs, [network])
     if checkpoint is not None:
         try:
             optimizer.load_state_dict(checkpoint["_optm_state"])
@@ -158,8 +161,10 @@ def train_model(
     scheduler,
     device,
     dataloaders,
+    run_model,
     configs=None,
     args=None,
+    trial=None
 ):
     """Train the entire model for all epochs
 
@@ -278,7 +283,12 @@ def train_model(
                 early_stop_flag = 0
             last_loss = val_loss
             data["epochs"] = ep + 1
+            if trial is not None:
+                trial.report(val_loss)
 
+                if trial.should_prune():
+                    raise optuna.exceptions.TrialPruned()
+                
         torch.save(
             {
                 "_model_state": model.state_dict(),
@@ -301,7 +311,7 @@ def train_model(
         msg = output_msg(test_loss, test_acc, data["epochs"])
         print(msg)
     print("Training finished")
-    return outputs
+    return test_loss
 
 
 def output_msg(loss, accuracy, epoch, is_val=0, periodic=1):
