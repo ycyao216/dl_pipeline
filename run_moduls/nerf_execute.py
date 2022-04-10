@@ -5,12 +5,15 @@ import tqdm
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') 
 
 def run_model(data_loader, optimizer, model, criterion, metric, configs, is_train=True):
+    '''
+    The batch size for this one must be 1.
+    '''
     model_corse, model_fine = model
     cumulative_loss = 0
     dataset_size = len(data_loader.dataset)
     #@NOTE: Use the one-image version of loading
     #@TODO: Check the dataloader returns the desired elements
-    for batch_img, labels, focal, intrinsics, extrinsics in data_loader:
+    for img_w, img_h, focal, intrinsics, extrinsics, target in data_loader:
         if is_train == 0:
             optimizer.zero_grad(set_to_none=True)
         outputs = model(batch)
@@ -24,25 +27,6 @@ def run_model(data_loader, optimizer, model, criterion, metric, configs, is_trai
             #@TODO: Check the implemetation in engine.py
             optimizer.step()
     return cumulative_loss.item() / dataset_size, metric.epoch_result(dataset_size)
-
-
-def sampling(num_bins, near_dist, far_dist):
-    bins = np.linspace(near_dist, far_dist, num_bins).view((-1,2))
-    samples = np.random.uniform(bins[:,:1],bins[:,1:])
-    return torch.from_numpy(samples).to(device)
-
-def quadrature_calculation(samples, density, color):
-    differences = samples[:,1:] - samples[:,:-1]
-    summant = density*differences
-    T_is = torch.exp(-torch.cumsum(summant))
-    exps = 1 - torch.exp(-summant)
-    color = torch.sum(T_is * exps * color,dim=-2)
-    return color 
-
-def expected_color():
-    pass 
-
-
 
 def sample_pdf(bins, weights, N_samples, det=False):
 
@@ -107,14 +91,13 @@ def batchify_rays(rays_flat, chunk=1024*32, **kwargs):
 
 
 def render_rays(ray_batch,
-                network_fn,
-                network_query_fn,
+                network,
                 N_samples,
                 lindisp=False,
                 perturb=0.,
                 N_importance=0):
 
-    def raw2outputs(raw, sampled_z_vals, rays_d):
+    def raw2outputs(network_output, sampled_z_vals, rays_d):
         def raw2alpha(in_put, dists): 
             return 1.0 - torch.exp(-in_put * dists)
         dists = sampled_z_vals[..., 1:] - sampled_z_vals[..., :-1]
@@ -122,18 +105,19 @@ def render_rays(ray_batch,
             [dists, torch.broadcast_to(torch.tensor([1e10],device=device), dists[..., :1].shape)],
             axis=-1)  # [N_rays, N_samples]
         dists = dists * torch.linalg.norm(rays_d[..., None, :], axis=-1)
-        alpha = raw2alpha(raw[..., 3], dists)  # [N_rays, N_samples]
-        rgb = raw[...,:3]
+        rgb = network_output[...,:3]
+        rou = network_output[...,-1:]
+        alpha = raw2alpha(rou, dists)  # [N_rays, N_samples]
         #@NOTE:Risky
-        weights = alpha * \
-            torch.cumprod((1.-alpha + 1e-10)[:-1], dim=-1)
+        weights = alpha * torch.cumprod((1.-alpha + 1e-10)[:-1], dim=-1)
         rgb_map = torch.sum(weights[..., None] * rgb, dim=-2)  # [N_rays, 3]
         return rgb_map, weights
-
+    net_corse, net_fine = network
+    #Ray batch contain: [ray origin 3, ray direction 3, ray bound 2, ray view direction (optional) 3]
     N_rays = ray_batch.shape[0]
     rays_o, rays_d = ray_batch[:, 0:3], ray_batch[:, 3:6]  # [N_rays, 3] each
     viewdirs = ray_batch[:, -3:] if ray_batch.shape[-1] > 8 else None
-    bounds = torch.reshape(ray_batch[..., 6:8], [-1, 1, 2])
+    bounds = ray_batch[..., 6:8].reshape([-1, 1, 2])
     near, far = bounds[..., 0], bounds[..., 1]  # [-1,1]
     t_vals = torch.linspace(0., 1., N_samples, device=device)
     if not lindisp:
@@ -147,11 +131,10 @@ def render_rays(ray_batch,
         lower = torch.cat([z_vals[..., :1], mids], dim=-1)
         t_rand = torch.rand(z_vals.shape)
         z_vals = lower + (upper - lower) * t_rand
-    pts = rays_o[..., None, :] + rays_d[..., None, :] * \
-        z_vals[..., :, None]  # [N_rays, N_samples, 3]
+    pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [N_rays, N_samples, 3]
     #@TODO:Make the query function a simple function call 
     #@FIXME: Also not working
-    raw = run_network(pts, viewdirs, network_fn)  # [N_rays, N_samples, 4]
+    raw = run_network(pts, viewdirs, net_corse)  # [N_rays, N_samples, 4]
     rgb_map, weights = raw2outputs(raw, z_vals, rays_d)
     if N_importance > 0:
         rgb_map_0 = rgb_map
@@ -162,17 +145,17 @@ def render_rays(ray_batch,
         z_vals = torch.sort(torch.cat([z_vals, z_samples], -1), dim=-1)
         pts = rays_o[..., None, :] + rays_d[..., None, :] * \
             z_vals[..., :, None]  # [N_rays, N_samples + N_importance, 3]
-        raw = run_network(pts, viewdirs, network_fn)
+        raw = run_network(pts, viewdirs, net_fine)
         rgb_map,_= raw2outputs(raw, z_vals, rays_d)
     return rgb_map
 
 def run_network(inputs, viewdirs, fn, netchunk=1024*64):
     """Prepares inputs and applies network 'fn'."""
-    inputs_flat = torch.reshape(inputs, [-1, inputs.shape[-1]])
+    inputs_flat =  inputs.reshape([-1, inputs.shape[-1]])
     input_dirs = torch.broadcast_to(viewdirs[:, None], inputs.shape)
-    input_dirs_flat = torch.reshape(input_dirs, [-1, input_dirs.shape[-1]])
+    input_dirs_flat = input_dirs.reshape([-1, input_dirs.shape[-1]])
     combined_input = torch.cat([inputs_flat, input_dirs_flat], dim=-1)
-    #@TODO: Check that encoding is working
+    #@TODO: Check the dimension of the combined_input
     outputs_flat = batchify(fn, netchunk)(combined_input)
     outputs = torch.reshape(outputs_flat, list(
         inputs.shape[:-1]) + [outputs_flat.shape[-1]])

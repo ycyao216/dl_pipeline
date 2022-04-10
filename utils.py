@@ -24,7 +24,7 @@ def select_lr_sheculer(configs, optimizer):
             optimizer=optimizer,
             start_factor=1.0,
             end_factor=1e-9,
-            total_iters=configs["experiment"]["scheduler"]["epoch"],
+            total_iters=configs["experiment"]["general"]["epoch"],
         )
     else:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer)

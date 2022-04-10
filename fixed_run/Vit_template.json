@@ -1,18 +1,18 @@
 {
     "meta":{
         "execute":true,
-        "dataset_path":"./cifar_dataset",
+        "dataset_path":"cifar_100_data",
         "training_dir_name":"",
         "validating_dir_name":"",
         "testing_dir_name":"",
-        "use_ffcv": true,
-        "ffcv_train_name":"cifar_100_train.beton",
-        "ffcv_val_name":"cifar_100_val.beton",
-        "ffcv_test_name":"cifar_100_test.beton"
+        "use_ffcv": false,
+        "ffcv_train_name":"",
+        "ffcv_val_name":"",
+        "ffcv_test_name":""
     },
     "model_spec":{
-        "model": "vit",
-        "name":"Vit_tuning",
+        "model": "resnet",
+        "name":"Resnet18_none",
         "__spec_instruc_for_model_args": "image_size,patch_size,encoding_dim,mlp_dimension,trans_layer_count,transformer_heads,class_num,drop_out_rate",
         "model_args":{
             "image_size": 32,
@@ -24,7 +24,7 @@
             "class_num":100,
             "drop_out_rate":0.1
         },
-        "task":"classification_cifar100"
+        "task":"image_classification"
     },
     "data":{
         "testing_dir_name":"",
@@ -34,7 +34,7 @@
     "experiment":{
         "general":{
             "bz":128,
-            "epoch":30,
+            "epoch":20,
             "lr":0.1,
             "early_stop":false,
             "es_penalty":0.0
@@ -64,10 +64,5 @@
     "__Hyper search should be list of list of config access names":"<- this is a comment",
     "hyper_search":[["model_spec","model_args","patch_size"],["model_spec","model_args","transformer_heads"],["experiment","general","lr"]],
     "hyper_search_type":["categorical", "int", "loguniform"],
-    "hyper_search_range":[[[2,4,8,16]],[8,18],[5e-5,5e-4]],
-    "optuna":{
-        "save_name": "first_study",
-        "storage": "sqlite:///first_attempt.db",
-        "dataframe_name": "first_study_result.csv"
-    }
+    "hyper_search_range":[[[2,4,8,16]],[8,18],[5e-4,5e-5]]
 }

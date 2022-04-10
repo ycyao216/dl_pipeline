@@ -30,7 +30,7 @@ def cross_validation(main_config, model_config, args, trial=None):
     train_data_loader, valid_data_loader, test_data_loader = get_dataloader(
         main_config, model_config
     )
-    m = m.to(device)
+    m = [mod.to(device) for mod in m]
     loss = train_model(
         m,
         criterion,
@@ -58,7 +58,7 @@ def visualize_all(main_config, model_config, args):
     m, __c, __m, __o, __l = prepare_model(device, main_config, model_config, args)
     __x, __y, test_data_loader = get_dataloader(main_config, model_config)
     visualizer_const = main_config["visualizer"][model_config["model_spec"]["task"]]
-    m = m.to(device)
+    m = [mod.to(device) for mod in m]
     visualizer = visualizer_const(m, test_data_loader)
     visualizer.visualize()
 
@@ -103,7 +103,7 @@ def hyper_tuning(main_config, model_config, args):
                                 study_name=save_name,
                                 storage=storage,
                                 load_if_exists=True)
-    study.optimize(objective, n_trials = model_config["experiment"]["general"]["epoch"])
+    study.optimize(objective, n_trials = model_config["optuna"]["trial_num"], gc_after_trial=True)
     return study 
 
 def main(args):

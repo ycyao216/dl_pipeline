@@ -24,7 +24,8 @@ class Nerf_dataset(Dataset):
         self.focal = self.intrinsic[0,0]
 
     def __getitem__(self, index):
-        return self.images[index], self.extrinsics[index], self.intrinsic, self.focal 
+        #@TODO: Make flexible, temporarly set to 800 for the given dataset
+        return 800,800,self.focal, self.extrinsics[index], self.intrinsic, self.images[index]
 
     def __len__(self):
         return len(self.images)

@@ -1,0 +1,73 @@
+{
+    "meta":{
+        "execute":true,
+        "dataset_path":"./cifar_dataset",
+        "training_dir_name":"",
+        "validating_dir_name":"",
+        "testing_dir_name":"",
+        "use_ffcv": true,
+        "ffcv_train_name":"cifar_100_train.beton",
+        "ffcv_val_name":"cifar_100_val.beton",
+        "ffcv_test_name":"cifar_100_test.beton"
+    },
+    "model_spec":{
+        "model": "vit",
+        "name":"Vit_tuning",
+        "__spec_instruc_for_model_args": "image_size,patch_size,encoding_dim,mlp_dimension,trans_layer_count,transformer_heads,class_num,drop_out_rate",
+        "model_args":{
+            "image_size": 32,
+            "patch_size": 8,
+            "encoding_dim":512,
+            "mlp_dimension":1024,
+            "trans_layer_count":6,
+            "transformer_heads":14,
+            "class_num":100,
+            "drop_out_rate":0.1
+        },
+        "task":"classification_cifar100"
+    },
+    "data":{
+        "train_fraction":0.8,
+        "subset_fraction":1.0
+    },
+    "experiment":{
+        "general":{
+            "bz":128,
+            "epoch":20,
+            "lr":0.1,
+            "early_stop":false,
+            "es_penalty":0.0
+        },
+        "optimizer":{
+            "optimizer":"adam",
+            "weight_decay":1e-4,
+            "momentum":0.9,
+            "dampening":0.0
+        },
+        "scheduler":{
+            "lr_scheduler": "linear",
+            "mile_stones":[60,90],
+            "gamma":0.1
+        }
+
+    },
+    "augmentations":{
+        "brightness":0.0,
+        "hue":0.0,
+        "contrast":0.0,
+        "saturation":0.0,
+        "kernel_size":[],
+        "sigms":[],
+        "grayscale":true
+    },
+    "__Hyper search should be list of list of config access names":"<- this is a comment",
+    "hyper_search":[["model_spec","model_args","patch_size"],["model_spec","model_args","transformer_heads"],["experiment","general","lr"]],
+    "hyper_search_type":["categorical", "int", "loguniform"],
+    "hyper_search_range":[[[2,4,8,16]],[8,16],[5e-5,5e-4]],
+    "optuna":{
+        "save_name": "vit_tuning_216_816_5554",
+        "storage": "sqlite:///optuna_results/vit_tuning_216_816_5554.db",
+        "dataframe_name": "vit_tuning_216_816_5554.csv",
+        "trial_num":30
+    }
+}

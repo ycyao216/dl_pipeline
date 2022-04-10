@@ -38,9 +38,7 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     # load model, criterion, optimizer, and learning rate scheduler
     model_name = configs["model_spec"]["model"]
     model_constructor = program_config["model_map"][model_name]
-    model_arguments = configs["model_spec"]["model_args"]
-    network = model_constructor(configs)
-    network.apply(initialize_weights)
+    network = model_constructor(configs).get_model()
     checkpoint_good_flag = True
     checkpoint_path = (
         os.path.join(args.checkpoint_dir, configs["model_spec"]["name"]) + ".pt"
@@ -48,12 +46,18 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     checkpoint = None
     try:
         checkpoint = torch.load(checkpoint_path)
+        if args.mode == 4:
+            print("Hyper parameter tuning, removing finished checkpoint")
+            os.remove(checkpoint_path)
+            checkpoint = None 
     except Exception as e:
         print("Cannot load checkpoint:" + checkpoint_path)
         checkpoint_good_flag = False
+
     try:
         #@FIXME: Won't work with two model nerf
-        network.load_state_dict(checkpoint["_model_state"])
+        for i in range(len(network)):
+            network[i].load_state_dict(checkpoint["_model_state"][i])
         out_msg = (
             "=============================\n"
             + "=============================\n"
@@ -71,16 +75,20 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
                 + str(e)
                 + ". Training will start from scrach."
             )
+            for net in network:
+                net.apply(initialize_weights)
             print(out_msg)
             checkpoint_good_flag = False
+
     task_name = configs["model_spec"]["task"]
     criterion_constructor = program_config["criterion_map"][task_name]
     metric_constructor = program_config["metric_map"][task_name]
     criterion = criterion_constructor()
     metric = metric_constructor()
-    network.to(device)
+    for net in network:
+        net.to(device)
     # Set up optimizer
-    optimizer = select_optimizer(configs, [network])
+    optimizer = select_optimizer(configs, network)
     if checkpoint is not None:
         try:
             optimizer.load_state_dict(checkpoint["_optm_state"])
@@ -113,7 +121,7 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     return network, criterion, metric, optimizer, lr_scheduler, run_function
 
 
-def run_model(data_loader, dataset_size, optimizer, model, criterion, metric, configs, is_train=True):
+def run_model(data_loader, dataset_size, optimizer, model, criterion, metric, configs, is_train=0):
     """Train or evaluate a model
 
     Parameters
@@ -136,6 +144,9 @@ def run_model(data_loader, dataset_size, optimizer, model, criterion, metric, co
     tuple
         (Cumulative loss over the entire dataset, cumulative correct predictions)
     """
+    model = model[0]
+    if is_train == 1 or is_train == 2:
+        model.eval()
     cumulative_loss = 0
     for batch, labels in data_loader:
         if is_train == 0:
@@ -231,17 +242,26 @@ def train_model(
     )
     # Try to load results of previous attempt
     try:
-        with open(pickle_path, "rb") as inputfile:
-            data = pickle.load(inputfile)
-            msg = (
-                "Successfully loaded the following data: \n"
-                + str(data)
-                + " from: "
-                + pickle_path
-                + "\n"
-            )
-            print(msg)
-            inputfile.close()
+        if args.mode != 4:
+            with open(pickle_path, "rb") as inputfile:
+                data = pickle.load(inputfile)
+                msg = (
+                    "Successfully loaded the following data: \n"
+                    + str(data)
+                    + " from: "
+                    + pickle_path
+                    + "\n"
+                )
+                print(msg)
+                inputfile.close()
+        else:
+            data = {
+            "training_loss": [],
+            "training_acc": [],
+            "validation_loss": [],
+            "validation_acc": [],
+            "epochs": 0,
+            }
     except Exception as e:
         msg = (
             "[WARNING] Failed to load previous training results. New results pickle file will be made: "
@@ -271,7 +291,8 @@ def train_model(
         msg = output_msg(
             train_loss, train_acc, data["epochs"], is_val=False, periodic=5
         )
-        print(msg)
+        if args.mode != 4:
+            print(msg)
         # Learning rate scheduler update
         scheduler.step()
         # Append trainig results
@@ -280,13 +301,13 @@ def train_model(
 
         with torch.no_grad():
             # Evaluate model
-            model.eval()
             val_loss, val_acc = run_model(
                 val_loader, vdl, optimizer, model, criterion, metric, configs, is_train=1
             )
             # Print results every 5 epochs.
-            msg = output_msg(val_loss, val_acc, data["epochs"], is_val=True, periodic=5)
-            print(msg)
+            if args.mode != 4:
+                msg = output_msg(val_loss, val_acc, data["epochs"], is_val=True, periodic=5)
+                print(msg)
             # Appending validation results
             data["validation_loss"].append(val_loss)
             data["validation_acc"].append(val_acc)
@@ -301,12 +322,13 @@ def train_model(
 
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
-                
+        finished = (ep +1 >= epoch)
         torch.save(
             {
-                "_model_state": model.state_dict(),
+                "_model_state": [m.state_dict() for m in model],
                 "_optm_state": optimizer.state_dict(),
                 "_lr_state": scheduler.state_dict(),
+                "finished": finished
             },
             checkpoint_path,
         )
@@ -321,8 +343,9 @@ def train_model(
         # outputs, _ = run_model(
         #     test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=2
         # )
-        msg = output_msg(test_loss, test_acc, data["epochs"])
-        print(msg)
+        if args.mode != 4:
+            msg = output_msg(test_loss, test_acc, data["epochs"])
+            print(msg)
     print("Training finished")
     return test_loss
 

@@ -1,9 +1,7 @@
 {
-    "execute":true,
     "model": "resnet",
-    "__spec_instruc_for_model_args": "grayscale",
-    "model_args":[false],
-    "model_name":"template",
+    "model_args":[],
+    "model_save_path":"resnet18_original.pt",
     "bz":128,
     "epoch":120,
     "early_stop":false,
@@ -22,9 +20,7 @@
     "saturation":0.0,
     "kernel_size":[],
     "sigms":[],
-    "grayscale":false,
     "train_path":"./data/training.beton",
     "valid_path":"./data/validating.beton",
-    "test_path":"./data/testing.beton",
-    "subset_fraction": 1.0
+    "test_path":"./data/testing.beton"
 }

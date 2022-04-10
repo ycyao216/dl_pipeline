@@ -39,6 +39,9 @@ class Resnet18(nn.Module):
         x = self.fc(x)
         return x
 
+    def get_model(self):
+        return list([self])
+
 
 class BuildingBlock(nn.Module):
     """Some Information about BuildingBlock"""

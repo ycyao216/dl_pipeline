@@ -123,3 +123,6 @@ class Vit_custom(nn.Module):
         class_output = self.transformers(embedding)[:, :1, :]
         class_output = self.MLP_head(class_output)
         return class_output.squeeze(1)
+
+    def get_model(self):
+        return list([self])
