@@ -9,7 +9,7 @@ class Nerf_block(nn.Module):
     def __init__(self, in_dim, pose_enc_len=10, dir_enc_len=4, ppe_dim=60, pde_dim=24):
         super(Nerf_block, self).__init__()
         self.mlp_rou1 = nn.Sequential(
-            nn.Linear(in_dim, 256),
+            nn.Linear(ppe_dim, 256),
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU(),
@@ -46,7 +46,7 @@ class Nerf_block(nn.Module):
         torch.tensor
             RGB, rou
         """
-        x_e, d_e = self.positional_encoding(x)
+        x_e, d_e = self.posenc(x)
         x = nn.ReLU()(x_e)
         x = torch.cat([self.mlp_rou1(x), x_e], dim=1)
         x = nn.ReLU(inplace=True)(x)
@@ -83,9 +83,26 @@ class Nerf_block(nn.Module):
         dir_enc = torch.stack((sin_dir, cos_dir), dim=0).view(x.shape[0], 2*self.dir_enc_len).t().contiguous().view(x.shape[0], 2*self.dir_enc_len)
         return pose_enc, dir_enc
 
+
+    def posenc(self,x):
+        pos_x = x[:,:3]
+        dir_x = x[:,3:]
+        pose_enc, dir_enc = [],[]
+        for i in range(self.pose_enc_len):
+            for fn in [torch.sin, torch.cos]:
+                pose_enc.append(fn(2.**i * torch.pi* pos_x))
+                if i < self.dir_enc_len:
+                    dir_enc.append(fn(2.**i * torch.pi* dir_x))
+        return torch.cat(pose_enc,-1), torch.cat(dir_enc,-1)
+
 class Leveled_nerf:
     """Some Information about Leveled_nerf"""
-    def __init__(self, in_dim, pose_enc_len=10, dir_enc_len=4, ppe_dim=60, pde_dim=24):
+    def __init__(self,configs):
+        in_dim = configs["model_spec"]["model_args"]["in_dim"]
+        pose_enc_len=10
+        dir_enc_len=4
+        ppe_dim=60
+        pde_dim=24
         super(Leveled_nerf, self).__init__()
         self.model1 = Nerf_block(in_dim, pose_enc_len, dir_enc_len, ppe_dim, pde_dim)
         self.model2 = Nerf_block(in_dim, pose_enc_len, dir_enc_len, ppe_dim, pde_dim)

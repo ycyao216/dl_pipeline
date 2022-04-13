@@ -11,9 +11,9 @@ class nerf_loss:
         return self.loss(y_corse, y_fine, target)
 
     def corse_fine_loss(self, corse_r, fine_r, gt):
-        c_loss = torch.norm(corse_r, gt).sum(dim=1)
-        f_loss = torch.norm(fine_r, gt).sum(dim=1)
-        return c_loss + f_loss
+        c_loss = torch.cdist(corse_r, gt.squeeze(0)).sum(dim=1)
+        f_loss = torch.cdist(fine_r, gt.squeeze(0)).sum(dim=1)
+        return (c_loss + f_loss).sum()
 
 
 class nerf_metric:

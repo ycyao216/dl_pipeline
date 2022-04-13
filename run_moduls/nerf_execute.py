@@ -1,27 +1,29 @@
+from asyncio import coroutines
 import numpy as np
 import torch
 import tqdm 
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu') 
+device = "cpu" 
 
-def run_model(data_loader, optimizer, model, criterion, metric, configs, is_train=True):
+def run_model(data_loader, data_size, optimizer, model, criterion, metric, configs, is_train=0):
     '''
     The batch size for this one must be 1.
     '''
     model_corse, model_fine = model
     cumulative_loss = 0
-    dataset_size = len(data_loader.dataset)
+    dataset_size = data_size
     #@NOTE: Use the one-image version of loading
     #@TODO: Check the dataloader returns the desired elements
-    for img_w, img_h, focal, intrinsics, extrinsics, target in data_loader:
+    for rays, pixels in data_loader:
         if is_train == 0:
             optimizer.zero_grad(set_to_none=True)
-        outputs = model(batch)
+        corse_ret, fine_ret = render(rays[...,:3],rays[...,3:], model)
         if is_train == 2:
-            return outputs, None
-        loss = criterion(outputs, labels)
+            return fine_ret, None
+        loss = criterion(corse_ret, fine_ret, pixels)
         cumulative_loss += loss
-        metric.batch_accum(batch, outputs, labels)
+        #@TODO:Currently no metric
+        metric.batch_accum(None, None, None)
         if is_train == 0:
             loss.backward()
             #@TODO: Check the implemetation in engine.py
@@ -59,17 +61,6 @@ def sample_pdf(bins, weights, N_samples, det=False):
 
     return samples
 
-
-def get_rays(H, W, focal, c2w):
-    """Get ray origins, directions from a pinhole camera."""
-    i, j = torch.meshgrid(torch.arange(W, dtype=torch.float32),
-                       torch.arange(H, dtype=torch.float32), indexing='xy')
-    dirs = torch.stack([(i-W*.5)/focal, -(j-H*.5)/focal, -torch.ones_like(i)], -1)
-    rays_d = torch.sum(dirs[..., np.newaxis, :] * c2w[:3, :3], dim =-1)
-    rays_o = torch.broadcast_to(c2w[:3, -1], rays_d.shape)
-    return rays_o, rays_d
-
-
 def batchify(fn, chunk):
     """Constructs a version of 'fn' that applies to smaller batches."""
     if chunk is None:
@@ -80,14 +71,16 @@ def batchify(fn, chunk):
     return ret
 
 
-def batchify_rays(rays_flat, chunk=1024*32, **kwargs):
+def batchify_rays(rays_flat, model, chunk=1024*32, N_samples =  64):
     """Render rays in smaller minibatches to avoid OOM."""
-    all_ret = []
+    all_ret_corse = []
+    all_ret_fine = []
     for i in range(0, rays_flat.shape[0], chunk):
         #@TODO: Make kwargs to actual arguments
-        ret = render_rays(rays_flat[i:i+chunk], **kwargs)
-        all_ret.append(ret)
-    return all_ret
+        corse, fine = render_rays(rays_flat[i:i+chunk], model, N_samples)
+        all_ret_corse.append(corse)
+        all_ret_fine.append(fine)
+    return torch.cat(all_ret_corse,dim=0), torch.cat(all_ret_fine,dim=0)
 
 
 def render_rays(ray_batch,
@@ -105,12 +98,16 @@ def render_rays(ray_batch,
             [dists, torch.broadcast_to(torch.tensor([1e10],device=device), dists[..., :1].shape)],
             axis=-1)  # [N_rays, N_samples]
         dists = dists * torch.linalg.norm(rays_d[..., None, :], axis=-1)
+        dists = dists.unsqueeze(-1)
         rgb = network_output[...,:3]
         rou = network_output[...,-1:]
         alpha = raw2alpha(rou, dists)  # [N_rays, N_samples]
-        #@NOTE:Risky
-        weights = alpha * torch.cumprod((1.-alpha + 1e-10)[:-1], dim=-1)
-        rgb_map = torch.sum(weights[..., None] * rgb, dim=-2)  # [N_rays, 3]
+        #@FIXME: Need to match the tf way
+        cumulated = torch.cumprod((1.-alpha + 1e-10), dim=-1)
+        prods = torch.roll(cumulated,1,dims=-2)
+        prods[...,:1,:] = 1
+        weights = alpha * prods
+        rgb_map = torch.sum(weights * rgb, dim=-2)  # [N_rays, 3]
         return rgb_map, weights
     net_corse, net_fine = network
     #Ray batch contain: [ray origin 3, ray direction 3, ray bound 2, ray view direction (optional) 3]
@@ -133,11 +130,10 @@ def render_rays(ray_batch,
         z_vals = lower + (upper - lower) * t_rand
     pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [N_rays, N_samples, 3]
     #@TODO:Make the query function a simple function call 
-    #@FIXME: Also not working
     raw = run_network(pts, viewdirs, net_corse)  # [N_rays, N_samples, 4]
     rgb_map, weights = raw2outputs(raw, z_vals, rays_d)
+    rgb_map_0 = rgb_map
     if N_importance > 0:
-        rgb_map_0 = rgb_map
         z_vals_mid = .5 * (z_vals[..., 1:] + z_vals[..., :-1])
         z_samples = sample_pdf(
             z_vals_mid, weights[..., 1:-1], N_importance, det=(perturb == 0.))
@@ -147,7 +143,7 @@ def render_rays(ray_batch,
             z_vals[..., :, None]  # [N_rays, N_samples + N_importance, 3]
         raw = run_network(pts, viewdirs, net_fine)
         rgb_map,_= raw2outputs(raw, z_vals, rays_d)
-    return rgb_map
+    return rgb_map_0, rgb_map
 
 def run_network(inputs, viewdirs, fn, netchunk=1024*64):
     """Prepares inputs and applies network 'fn'."""
@@ -156,40 +152,26 @@ def run_network(inputs, viewdirs, fn, netchunk=1024*64):
     input_dirs_flat = input_dirs.reshape([-1, input_dirs.shape[-1]])
     combined_input = torch.cat([inputs_flat, input_dirs_flat], dim=-1)
     #@TODO: Check the dimension of the combined_input
-    outputs_flat = batchify(fn, netchunk)(combined_input)
+    outputs_flat = fn(combined_input[:,...])
     outputs = torch.reshape(outputs_flat, list(
-        inputs.shape[:-1]) + [outputs_flat.shape[-1]])
+       inputs.shape[:-1]) + [outputs_flat.shape[-1]])
     return outputs
 
 #@TODO: Make sure the render arguments are correct
-def render(H, W, focal,
-           chunk=1024*32, rays=None, c2w=None, ndc=True,
-           near=0., far=1.,
-           use_viewdirs=False, c2w_staticcam=None,
-           **kwargs):
-
-    if c2w is not None:
-        rays_o, rays_d = get_rays(H, W, focal, c2w)
-    else:
-        rays_o, rays_d = rays
-    if use_viewdirs:
-        viewdirs = rays_d
-        if c2w_staticcam is not None:
-            rays_o, rays_d = get_rays(H, W, focal, c2w_staticcam)
-        viewdirs = viewdirs / torch.linalg.norm(viewdirs, dim=-1, keepdims=True)
-        viewdirs = torch.type(viewdirs.reshape([-1, 3]), dtype=torch.float32)
+def render(rays_d, rays_o, model, chunk=1024*32, near=0., far=1.):
+    viewdirs = rays_d
+    viewdirs = viewdirs / torch.linalg.norm(viewdirs, dim=-1, keepdims=True)
+    viewdirs = viewdirs.squeeze(0).type(torch.float32)
 
     sh = rays_d.shape  # [..., 3]
-    rays_o = torch.type(rays_o.reshape([-1, 3]), dtype=torch.float32)
-    rays_d = torch.type(rays_d.reshape([-1, 3]), dtype=torch.float32)
+    rays_o = rays_o.reshape([-1, 3]).type(torch.float32)
+    rays_d = rays_d.reshape([-1, 3]).type(torch.float32)
     near, far = near * \
         torch.ones_like(rays_d[..., :1]), far * torch.ones_like(rays_d[..., :1])
-    rays = torch.cat([rays_o, rays_d, near, far], dim=-1)
-    if use_viewdirs:
-        rays = torch.cat([rays, viewdirs], dim=-1)
+    rays = torch.cat([rays_o, rays_d, near, far, viewdirs], dim=-1)
     #@FIXME: Change the batchify argument to the correct ones
-    all_ret = batchify_rays(rays, chunk, **kwargs)
-    return all_ret
+    corse, fine = batchify_rays(rays, model, chunk)
+    return corse,fine
 
 
 def render_path(render_poses, hwf, chunk, render_kwargs, gt_imgs=None, savedir=None, render_factor=0):
