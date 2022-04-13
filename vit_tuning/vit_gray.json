@@ -1,6 +1,6 @@
 {
     "meta":{
-        "execute":false,
+        "execute":true,
         "dataset_path":"./cifar_dataset",
         "training_dir_name":"",
         "validating_dir_name":"",
@@ -12,7 +12,7 @@
     },
     "model_spec":{
         "model": "vit",
-        "name":"Vit_tuning",
+        "name":"Vit_gray",
         "__spec_instruc_for_model_args": "image_size,patch_size,encoding_dim,mlp_dimension,trans_layer_count,transformer_heads,class_num,drop_out_rate",
         "model_args":{
             "image_size": 32,
@@ -58,16 +58,16 @@
         "saturation":0.0,
         "kernel_size":[],
         "sigms":[],
-        "grayscale":false
+        "grayscale":true
     },
     "__Hyper search should be list of list of config access names":"<- this is a comment",
-    "hyper_search":[["model_spec","model_args","patch_size"],["model_spec","model_args","transformer_heads"],["experiment","general","lr"]],
-    "hyper_search_type":["categorical", "int", "loguniform"],
-    "hyper_search_range":[[[8,16]],[16,20],[7e-5,5e-4]],
+    "hyper_search":[["model_spec","model_args","transformer_heads"],["experiment","general","lr"]],
+    "hyper_search_type":["int", "loguniform"],
+    "hyper_search_range":[[12,16],[7e-5,5e-4]],
     "optuna":{
-        "save_name": "vit_tuning_1620",
-        "storage": "sqlite:///optuna_results/vit_tuning_1620.db",
-        "dataframe_name": "vit_tuning_1620.csv",
-        "trial_num":40
+        "save_name": "vit_gray",
+        "storage": "sqlite:///optuna_results/vit_gray.db",
+        "dataframe_name": "vit_gray.csv",
+        "trial_num":10
     }
 }

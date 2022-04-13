@@ -17,13 +17,6 @@ master_config_path = "./main_config.pkl"
 
 
 def cross_validation(main_config, model_config, args, trial=None):
-    if model_config["meta"]["execute"] == False:
-        print(
-            "Skipping: "
-            + model_config["model_spec"]["name"]
-            + "\n=============================\n"
-        )
-        return None
     m, criterion, metric, optimizer, lr_scheduler, run_func = prepare_model(
         device, main_config, model_config, args
     )
@@ -95,6 +88,7 @@ def hyper_tuning(main_config, model_config, args):
         optuna_utils.optuna_config(trial,model_config=model_config)
         loss = cross_validation(main_config=main_config, model_config=model_config, args=args, trial=trial)
         return loss 
+    print(model_config)
     save_name = model_config["optuna"]["save_name"]
     storage = model_config["optuna"]["storage"]
     study = optuna.create_study(direction="minimize", 
@@ -114,11 +108,18 @@ def main(args):
     model_config_dir = args.model_config_dir
     main_config = utils.load_pickle(master_config_path)
     data_root = main_config["database_root"]
-    if args.mode == 2 or args.mode == 0 or args.mode == 3 or args.mode == 4:
+    if not args.mode == 1:
         for model_config_pth in os.listdir(model_config_dir):
             model_file = os.path.join(model_config_dir, model_config_pth)
             with open(model_file, "r") as read_file:
                 model_config = json.load(read_file)
+                if model_config["meta"]["execute"] == False and args.mode != 5:
+                    print(
+                        "Skipping: "
+                        + model_config["model_spec"]["name"]
+                        + "\n=============================\n"
+                    )
+                    continue 
                 prepend_root_path(data_root, model_config)
                 apply_pre_processing(main_config, model_config, args)
                 if args.mode == 3:
@@ -130,6 +131,15 @@ def main(args):
                     save_name = model_config["optuna"]["dataframe_name"]
                     df = study.trials_dataframe()
                     df.to_csv(save_name)
+                elif args.mode == 5:
+                    study_name = model_config["optuna"]["save_name"]
+                    study_storage = model_config["optuna"]["storage"]
+                    try:
+                        study_ = optuna.load_study(study_name = study_name, storage=study_storage)
+                        print("Tuning summary for: " + study_name)
+                        print(study_.best_trial)
+                    except Exception as e: 
+                        print("Failed to read " + study_name + " stored at " + study_storage +". Due to: " + str(e))
                 else:
                     outputs = cross_validation(main_config, model_config, args)
 

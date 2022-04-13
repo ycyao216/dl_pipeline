@@ -16,9 +16,10 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 class ColorJitterWrapper(nn.Module):
     """Some Information about ColorJitterWrapper"""
-    def __init__(self, args):
+    def __init__(self, configs):
         super(ColorJitterWrapper, self).__init__()
-        self.trans = transforms.ColorJitter(brightness = args["brightness"], hue = args["hue"], contrast=args["contrast"], saturation = args["saturation"])
+        self.configs = configs
+        self.trans = transforms.ColorJitter(brightness = configs["augmentations"]["brightness"], hue = configs["augmentations"]["hue"], contrast=configs["augmentations"]["contrast"], saturation = configs["augmentations"]["saturation"])
     def forward(self, x):
         x = self.trans(x)
         return x
@@ -34,9 +35,9 @@ class GrayScale(nn.Module):
 
 class GaussianWrapper(nn.Module):
     """Some Information about GaussianWrapper"""
-    def __init__(self, args):
+    def __init__(self, configs):
         super(GaussianWrapper, self).__init__()
-        self.trans = transforms.GaussianBlur(kernel_size = args["kernel_size"], sigma = args["sigma"])
+        self.trans = transforms.GaussianBlur(kernel_size = configs["augmentations"]["kernel_size"], sigma = configs["augmentations"]["sigma"])
     def forward(self, x):
         x = self.trans(x)
         return x

@@ -8,8 +8,6 @@ class Resnet18(nn.Module):
     def __init__(self, gray_scale=False):
         super(Resnet18, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
-        if gray_scale:
-            self.conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
         self.max_1 = nn.MaxPool2d(kernel_size=(3, 3), stride=2)
         self.layer2 = BuildingBlock(64, 64, False)

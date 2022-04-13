@@ -115,7 +115,10 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
                 if not (response.lower() == "y" or response.lower() == "yes"):
                     print("Terminated. Errors will be raised. Please check your files")
                     return None, None, None, None
-    run_function = program_config["run_modules"][model_name]
+    try:
+        run_function = program_config["run_modules"][model_name]
+    except Exception as e:
+        run_function = None 
     if run_function is None:
         run_function = run_model
     return network, criterion, metric, optimizer, lr_scheduler, run_function

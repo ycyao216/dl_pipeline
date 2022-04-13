@@ -19,6 +19,6 @@ def optuna_config_substitute(name, trial, dist_type:str, c_args):
     elif dist_type == "int":
         return trial.suggest_int(name,*c_args)
     elif dist_type == "categorical":
-        return trial.suggest_categorical(name,*c_args)
+        return trial.suggest_categorical(name,c_args)
     else:
         return None
