@@ -352,7 +352,12 @@ def train_model(
         save_pickle(pickle_path, data)
     with torch.no_grad():
         # Test the model on test set
-        if configs["meta"]["has_test_gt"]:
+        has_gt = False 
+        try: 
+            has_gt = configs["meta"]["has_test_gt"]
+        except Exception as e: 
+            has_gt = False 
+        if has_gt:
             test_loss, test_acc = run_model(
                 test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=2
             )
@@ -370,9 +375,10 @@ def train_model(
                 save_dir += "_outputs.pkl"
                 opt_data = {"model_name" : name, "output": outputs}
                 save_pickle(save_dir, opt_data)
+                print("Saved outputs to: " + save_dir)
         save_pickle(pickle_path, data)
         if args.mode != 4:
-            msg = output_msg(test_loss, test_acc, data["epochs"])
+            msg = output_msg(test_loss, test_acc, data["epochs"],is_val = 2)
             print(msg)
     print("Training finished")
     return test_loss

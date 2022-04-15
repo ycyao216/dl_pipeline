@@ -117,49 +117,53 @@ def main(args):
     data_root = main_config["database_root"]
     if not args.mode == 1:
         for model_config_pth in os.listdir(model_config_dir):
-            model_file = os.path.join(model_config_dir, model_config_pth)
-            with open(model_file, "r") as read_file:
-                model_config = json.load(read_file)
-                if model_config["meta"]["execute"] == False and args.mode != 5:
-                    print(
-                        "Skipping: "
-                        + model_config["model_spec"]["name"]
-                        + "\n=============================\n"
-                    )
-                    continue
-                prepend_root_path(data_root, model_config)
-                apply_pre_processing(main_config, model_config, args)
-                if args.mode == 3:
-                    visualize_all(main_config, model_config, args)
-                elif args.mode == 4:
-                    print(
-                        "Hyperparameter tuning started. Model weight saves may not be the best model"
-                    )
-                    study = hyper_tuning(main_config, model_config, args)
-                    print(study.best_params)
-                    save_name = model_config["optuna"]["dataframe_name"]
-                    df = study.trials_dataframe()
-                    df.to_csv(save_name)
-                elif args.mode == 5:
-                    study_name = model_config["optuna"]["save_name"]
-                    study_storage = model_config["optuna"]["storage"]
-                    try:
-                        study_ = optuna.load_study(
-                            study_name=study_name, storage=study_storage
-                        )
-                        print("Tuning summary for: " + study_name)
-                        print(study_.best_trial)
-                    except Exception as e:
+            try:
+                model_file = os.path.join(model_config_dir, model_config_pth)
+                with open(model_file, "r") as read_file:
+                    model_config = json.load(read_file)
+                    if model_config["meta"]["execute"] == False and args.mode != 5:
                         print(
-                            "Failed to read "
-                            + study_name
-                            + " stored at "
-                            + study_storage
-                            + ". Due to: "
-                            + str(e)
+                            "Skipping: "
+                            + model_config["model_spec"]["name"]
+                            + "\n=============================\n"
                         )
-                else:
-                    outputs = cross_validation(main_config, model_config, args)
+                        continue
+                    prepend_root_path(data_root, model_config)
+                    apply_pre_processing(main_config, model_config, args)
+                    if args.mode == 3:
+                        visualize_all(main_config, model_config, args)
+                    elif args.mode == 4:
+                        print(
+                            "Hyperparameter tuning started. Model weight saves may not be the best model"
+                        )
+                        study = hyper_tuning(main_config, model_config, args)
+                        print(study.best_params)
+                        save_name = model_config["optuna"]["dataframe_name"]
+                        df = study.trials_dataframe()
+                        df.to_csv(save_name)
+                    elif args.mode == 5:
+                        study_name = model_config["optuna"]["save_name"]
+                        study_storage = model_config["optuna"]["storage"]
+                        try:
+                            study_ = optuna.load_study(
+                                study_name=study_name, storage=study_storage
+                            )
+                            print("Tuning summary for: " + study_name)
+                            print(study_.best_trial)
+                        except Exception as e:
+                            print(
+                                "Failed to read "
+                                + study_name
+                                + " stored at "
+                                + study_storage
+                                + ". Due to: "
+                                + str(e)
+                            )
+                    else:
+                        outputs = cross_validation(main_config, model_config, args)
+            except Exception as e: 
+                print("Failed to execute: " + model_config_pth + " due to: " +str(e))
+                continue 
 
     if args.mode == 2 or args.mode == 1:
         utils.generate_all_plots(args.result_dir, args.save_dir)
