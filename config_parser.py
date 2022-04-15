@@ -23,8 +23,8 @@ from models import (
 from run_moduls import nerf_execute, pose_6d_execute
 from visualizers import pose_6d_visualizer, segmentation_3d_visualizer
 
-import torchvision 
-import optuna 
+import torchvision
+import optuna
 
 
 master_config_path = "./main_config.pkl"
@@ -64,18 +64,18 @@ master_config_obj = {
     "ffcv_writer": {
         "segmentation_3d": segment_3d_dataset.Segment_3d_ffcv_writer,
         "pose_estimation_6d": pose_dataset.Pose_dataset_ffcv_writer,
-        "classification_cifar100": cifar_dataset.Cifar100_ffcv_writer
+        "classification_cifar100": cifar_dataset.Cifar100_ffcv_writer,
     },
     "ffcv_loader": {
         "segmentation_3d": segment_3d_dataset.Segment_3d_ffcv_loader,
         "pose_estimation_6d": pose_dataset.Pose_dataset_ffcv_loader,
-        "classification_cifar100": cifar_dataset.Cifar100_ffcv_loader
+        "classification_cifar100": cifar_dataset.Cifar100_ffcv_loader,
     },
     "visualizer": {
         "None": None,
         "segmentation_3d": segmentation_3d_visualizer.segmentation_visualizer,
         "pose_estimation_6d": pose_6d_visualizer.Pose_box_visualizer,
-        "classification_cifar100": None
+        "classification_cifar100": None,
     },
     "run_modules": {
         "Nerf": nerf_execute.run_model,
@@ -90,6 +90,7 @@ master_config_obj = {
         "classification_cifar100":None,
         "view_synthesys": None
     },
+    "pre_preocessing": {"pose_estimation_6d": None, "classification_cifar100": None},
 }
 
 

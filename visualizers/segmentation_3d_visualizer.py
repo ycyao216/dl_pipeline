@@ -17,7 +17,7 @@ class segmentation_visualizer:
             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 1.0]]
         )
 
-    def visualize(self):
+    def visualize(self, configs):
         softmax = nn.Softmax()
         with torch.no_grad():
             for batch, _ in self.test_loader:

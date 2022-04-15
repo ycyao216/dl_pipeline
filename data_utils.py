@@ -86,10 +86,31 @@ def prepend_root_path(root_path, config_obj):
         root_path, config_obj["meta"]["ffcv_test_name"]
     )
 
+def prepend_root_path(root_path, config_obj):
+    config_obj["meta"]["training_dir_name"] = os.path.join(
+        root_path, config_obj["meta"]["training_dir_name"]
+    )
+    config_obj["meta"]["validating_dir_name"] = os.path.join(
+        root_path, config_obj["meta"]["validating_dir_name"]
+    )
+    config_obj["meta"]["testing_dir_name"] = os.path.join(
+        root_path, config_obj["meta"]["testing_dir_name"]
+    )
+    config_obj["meta"]["ffcv_train_name"] = os.path.join(
+        root_path, config_obj["meta"]["ffcv_train_name"]
+    )
+    config_obj["meta"]["ffcv_val_name"] = os.path.join(
+        root_path, config_obj["meta"]["ffcv_val_name"]
+    )
+    config_obj["meta"]["ffcv_test_name"] = os.path.join(
+        root_path, config_obj["meta"]["ffcv_test_name"]
+    )
+
+
 def get_dataloader(master_config, config):
-    data_base_root = pathlib.Path(os.path.join(
-        master_config["database_root"], config["meta"]["dataset_path"]
-        )).resolve()
+    data_base_root = pathlib.Path(
+        os.path.join(master_config["database_root"], config["meta"]["dataset_path"])
+    ).resolve()
     prepend_root_path(data_base_root, config)
     dataset_constr = master_config["datasets"][config["model_spec"]["task"]]
     training_dataset, testing_dataset, validating_dataset = None, None, None
@@ -130,9 +151,12 @@ def get_dataloader(master_config, config):
                 )
             )
     else:
-        ffcv_datawriter = master_config["ffcv_writer"][config["model_spec"]["task"]](config)
-        ffcv_dataloader = master_config["ffcv_loader"][config["model_spec"]["task"]](config)
-
+        ffcv_datawriter = master_config["ffcv_writer"][config["model_spec"]["task"]](
+            config
+        )
+        ffcv_dataloader = master_config["ffcv_loader"][config["model_spec"]["task"]](
+            config
+        )
         if not os.path.exists(ffcv_train_path):
             label_writer = ffcv_datawriter.make_writer(ffcv_train_path)
             training_dataset = dataset_constr(config, train=0)
@@ -171,9 +195,9 @@ def get_dataloader(master_config, config):
             testing_dataset = dataset_constr(config, train=2)
             non_label_writer.from_indexed_dataset(testing_dataset)
 
-        train_loader = ffcv_dataloader.make_loader(ffcv_train_path,config)
-        val_loader = ffcv_dataloader.make_loader(ffcv_val_path,config)
-        test_loader = ffcv_dataloader.make_loader(ffcv_test_path,config)
+        train_loader = ffcv_dataloader.make_loader(ffcv_train_path, config)
+        val_loader = ffcv_dataloader.make_loader(ffcv_val_path, config)
+        test_loader = ffcv_dataloader.make_loader(ffcv_test_path, config)
         return train_loader, val_loader, test_loader
 
     train_loader = torch.utils.data.DataLoader(

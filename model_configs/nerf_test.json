@@ -1,0 +1,77 @@
+{
+    "meta":{
+        "execute":true,
+        "dataset_path":"./nerf_dataset/bottles",
+        "training_dir_name":"./nerf_dataset/bottles",
+        "validating_dir_name":"./nerf_dataset/bottles",
+        "testing_dir_name":"./nerf_dataset/bottles",
+        "use_ffcv": false,
+        "ffcv_train_name":"cifar_100_train.beton",
+        "ffcv_val_name":"cifar_100_val.beton",
+        "ffcv_test_name":"cifar_100_test.beton"
+    },
+    "model_spec":{
+        "model": "Nerf",
+        "name":"nerf_test",
+        "__spec_instruc_for_model_args":["in_dim"],
+        "model_args":{
+            "in_dim":6
+        },
+        "task":"view_synthesys"
+    },
+    "data":{
+        "train_fraction":0.8,
+        "subset_fraction":1.0
+    },
+    "experiment":{
+        "general":{
+            "bz":1,
+            "epoch":100,
+            "lr":5e-4,
+            "early_stop":false,
+            "es_penalty":0.0
+        },
+        "optimizer":{
+            "optimizer":"adam",
+            "weight_decay":1e-4,
+            "momentum":0.9,
+            "dampening":0.0
+        },
+        "scheduler":{
+            "lr_scheduler": "Linear",
+            "mile_stones":[101],
+            "gamma":0.1
+        }
+
+    },
+    "augmentations":{
+        "brightness":0.0,
+        "hue":0.0,
+        "contrast":0.0,
+        "saturation":0.0,
+        "kernel_size":[],
+        "sigms":[],
+        "grayscale":false
+    },
+    "__Hyper search should be list of list of config access names":"<- this is a comment",
+    "hyper_search":[["model_spec","model_args","transformer_heads"],
+                    ["experiment","general","lr"],
+                    ["augmentations","brightness"],
+                    ["augmentations","hue"],
+                    ["augmentations","contrast"],
+                    ["augmentations","saturation"]],
+    "hyper_search_type":[ "int", "loguniform", "categorical","categorical", "categorical", "categorical"],
+    "hyper_search_range":[[12,18],[6e-5,4e-4],[0.0,0.1,0.2,0.3,0.4,0.5],[0.0,0.1,0.2,0.25],[0.0,0.1,0.2,0.3,0.4,0.5],[0.0,0.1,0.2,0.3,0.4,0.5]],
+    "optuna":{
+        "save_name": "vit_jitter",
+        "storage": "sqlite:///optuna_results/vit_jitter.db",
+        "dataframe_name": "vit_jitter.csv",
+        "trial_num":40
+    },
+    "special":{
+        "chunk":2
+    },
+    "visualization":{
+        "save_dir": "visualization_nerf"
+    }
+}

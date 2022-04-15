@@ -12,7 +12,7 @@
     },
     "model_spec":{
         "model": "vit",
-        "name":"Vit_tuning",
+        "name":"Vit_jitter",
         "__spec_instruc_for_model_args": "image_size,patch_size,encoding_dim,mlp_dimension,trans_layer_count,transformer_heads,class_num,drop_out_rate",
         "model_args":{
             "image_size": 32,
@@ -61,13 +61,18 @@
         "grayscale":false
     },
     "__Hyper search should be list of list of config access names":"<- this is a comment",
-    "hyper_search":[["model_spec","model_args","patch_size"],["model_spec","model_args","transformer_heads"],["experiment","general","lr"]],
-    "hyper_search_type":["categorical", "int", "loguniform"],
-    "hyper_search_range":[[[8,16]],[16,20],[7e-5,5e-4]],
+    "hyper_search":[["model_spec","model_args","transformer_heads"],
+                    ["experiment","general","lr"],
+                    ["augmentations","brightness"],
+                    ["augmentations","hue"],
+                    ["augmentations","contrast"],
+                    ["augmentations","saturation"]],
+    "hyper_search_type":[ "int", "loguniform", "categorical","categorical", "categorical", "categorical"],
+    "hyper_search_range":[[12,18],[6e-5,4e-4],[0.0,0.1,0.2,0.3,0.4,0.5],[0.0,0.1,0.2,0.25],[0.0,0.1,0.2,0.3,0.4,0.5],[0.0,0.1,0.2,0.3,0.4,0.5]],
     "optuna":{
-        "save_name": "vit_tuning_1620",
-        "storage": "sqlite:///optuna_results/vit_tuning_1620.db",
-        "dataframe_name": "vit_tuning_1620.csv",
+        "save_name": "vit_jitter",
+        "storage": "sqlite:///optuna_results/vit_jitter.db",
+        "dataframe_name": "vit_jitter.csv",
         "trial_num":40
     }
 }

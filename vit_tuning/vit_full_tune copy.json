@@ -33,7 +33,7 @@
     "experiment":{
         "general":{
             "bz":128,
-            "epoch":12,
+            "epoch":15,
             "lr":0.1,
             "early_stop":false,
             "es_penalty":0.0
@@ -63,11 +63,11 @@
     "__Hyper search should be list of list of config access names":"<- this is a comment",
     "hyper_search":[["model_spec","model_args","patch_size"],["model_spec","model_args","transformer_heads"],["experiment","general","lr"]],
     "hyper_search_type":["categorical", "int", "loguniform"],
-    "hyper_search_range":[[[8,16]],[16,20],[7e-5,5e-4]],
+    "hyper_search_range":[[[4,8,16]],[8,16],[7e-5,5e-4]],
     "optuna":{
-        "save_name": "vit_tuning_1620",
-        "storage": "sqlite:///optuna_results/vit_tuning_1620.db",
-        "dataframe_name": "vit_tuning_1620.csv",
+        "save_name": "vit_tuning_smaller",
+        "storage": "sqlite:///optuna_results/vit_tuning_smaller.db",
+        "dataframe_name": "vit_tuning_smaller.csv",
         "trial_num":40
     }
 }

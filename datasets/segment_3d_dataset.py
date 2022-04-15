@@ -3,7 +3,6 @@ from torch.utils.data import dataset, dataloader
 import os
 import numpy as np
 import torch
-from . import DEVICE
 import tqdm
 from random import sample, shuffle
 

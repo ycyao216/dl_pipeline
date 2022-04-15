@@ -2,8 +2,9 @@ import math
 import torch
 import torch.nn as nn
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# Old implementation of Unet from homework 0.
+device = torch.device(
+    "cuda:0" if torch.cuda.is_available() else "cpu"
+)  # Old implementation of Unet from homework 0.
 
 
 class Simple_UNet(nn.Module):
