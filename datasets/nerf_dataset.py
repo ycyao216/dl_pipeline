@@ -25,6 +25,7 @@ class Nerf_dataset(Dataset):
         self.focal = self.intrinsic[0,0]
         #@NOTE: lazy option
         self.size = 800
+        self.train = train 
         
     def __getitem__(self, index):
         """
@@ -33,14 +34,18 @@ class Nerf_dataset(Dataset):
         rays_o, rays_d = self.get_rays(self.size, self.size, self.focal, self.extrinsics[index])
         rays_o = rays_o.reshape((-1,3))
         rays_d = rays_d.reshape((-1,3))
-        image_pixels = self.images[index].to(device)
-        image_pixels = image_pixels.permute((1,2,0))[...,:3].reshape(-1,3)
+        if self.train !=2 :
+            image_pixels = self.images[index].to(device)
+            image_pixels = image_pixels.permute((1,2,0))[...,:3].reshape(-1,3)
+        else: 
+            image_pixels = None
         output = torch.cat([rays_o, rays_d, image_pixels],dim=-1)
         randid = torch.randperm(output.shape[0])
         output = output[randid]
         rays = output[...,:6]
-        pixel = output[...,6:]
-        return rays.to(device)[:6400,...], pixel.to(device)[:6400,...]
+        image_pixels = output[...,6:]
+        # Intentially left on cpu to access main memory
+        return rays, image_pixels
 
     def __len__(self):
         return len(self.images)

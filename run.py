@@ -52,7 +52,7 @@ def visualize_all(main_config, model_config, args):
     visualizer_const = main_config["visualizer"][model_config["model_spec"]["task"]]
     m = [mod.to(device) for mod in m]
     visualizer = visualizer_const(m, test_data_loader)
-    visualizer.visualize()
+    visualizer.visualize(model_config)
 
 
 def apply_pre_processing(main_config, model_config, args):

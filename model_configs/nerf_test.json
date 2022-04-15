@@ -70,5 +70,8 @@
     },
     "special":{
         "chunk":2
+    },
+    "visualization":{
+        "save_dir": "visualization_nerf"
     }
 }

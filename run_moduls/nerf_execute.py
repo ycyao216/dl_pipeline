@@ -78,8 +78,12 @@ def batchify_rays(rays_flat, model, chunk=1024*32, N_samples =  64):
     for i in range(0, rays_flat.shape[0], chunk):
         #@TODO: Make kwargs to actual arguments
         corse, fine = render_rays(rays_flat[i:i+chunk], model, N_samples)
+        corse = corse.cpu()
+        fine = fine.cpu()
         all_ret_corse.append(corse)
         all_ret_fine.append(fine)
+        # danger, may slow significantly
+        torch.cuda.empty_cache()
     return torch.cat(all_ret_corse,dim=0), torch.cat(all_ret_fine,dim=0)
 
 
@@ -109,6 +113,8 @@ def render_rays(ray_batch,
         weights = alpha * prods
         rgb_map = torch.sum(weights * rgb, dim=-2)  # [N_rays, 3]
         return rgb_map, weights
+    rays_o = rays_o.to(device)
+    rays_d = rays_d.to(device)
     net_corse, net_fine = network
     #Ray batch contain: [ray origin 3, ray direction 3, ray bound 2, ray view direction (optional) 3]
     N_rays = ray_batch.shape[0]
@@ -158,12 +164,11 @@ def run_network(inputs, viewdirs, fn, netchunk=1024*64):
     return outputs
 
 #@TODO: Make sure the render arguments are correct
-def render(rays_d, rays_o, model, chunk=1024*8, near=0., far=1.):
+def render(rays_d, rays_o, model, extrinsic = None, train = 0, chunk=1024*8, near=0., far=1.):
     viewdirs = rays_d
     viewdirs = viewdirs / torch.linalg.norm(viewdirs, dim=-1, keepdims=True)
     viewdirs = viewdirs.squeeze(0).type(torch.float32)
 
-    sh = rays_d.shape  # [..., 3]
     rays_o = rays_o.reshape([-1, 3]).type(torch.float32)
     rays_d = rays_d.reshape([-1, 3]).type(torch.float32)
     near, far = near * \
