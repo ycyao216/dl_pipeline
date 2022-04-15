@@ -4,8 +4,6 @@ import torch
 import tqdm
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
 def run_model(
     data_loader, data_size, optimizer, model, criterion, metric, configs, is_train=0
 ):
@@ -69,8 +67,7 @@ def sample_pdf(bins, weights, N_samples, det=False):
     samples = bins_g[..., 0] + t * (bins_g[..., 1] - bins_g[..., 0])
 
     return samples
-
-
+  
 def batchify(fn, chunk):
     """Constructs a version of 'fn' that applies to smaller batches."""
     if chunk is None:
@@ -82,7 +79,6 @@ def batchify(fn, chunk):
         )
 
     return ret
-
 
 def batchify_rays(rays_flat, model, chunk=1024 * 32, N_samples=64):
     """Render rays in smaller minibatches to avoid OOM."""
@@ -171,7 +167,6 @@ def render_rays(
         raw = run_network(pts, viewdirs, net_fine)
         rgb_map, _ = raw2outputs(raw, z_vals, rays_d)
     return rgb_map_0, rgb_map
-
 
 def run_network(inputs, viewdirs, fn, netchunk=1024 * 64):
     """Prepares inputs and applies network 'fn'."""

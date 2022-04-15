@@ -8,7 +8,7 @@ class cat_class_loss:
         self.loss = nn.CrossEntropyLoss()
 
     def __call__(self, y, target):
-        return self.loss(y, target)
+        return torch.nan_to_num(self.loss(y, target), nan=1e10, posinf=1e10,neginf=1e10)
 
 
 class cat_class_metric:

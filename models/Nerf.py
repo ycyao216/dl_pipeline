@@ -117,14 +117,19 @@ class Nerf_block(nn.Module):
 
 class Leveled_nerf:
     """Some Information about Leveled_nerf"""
-
     def __init__(self, configs):
         in_dim = configs["model_spec"]["model_args"]["in_dim"]
         pose_enc_len = 10
         dir_enc_len = 4
         ppe_dim = 60
         pde_dim = 24
+        
         super(Leveled_nerf, self).__init__()
+        in_dim = config["model_spec"]["model_args"]["in_dim"]
+        pose_enc_len=10
+        dir_enc_len=4
+        ppe_dim=60
+        pde_dim=24
         self.model1 = Nerf_block(in_dim, pose_enc_len, dir_enc_len, ppe_dim, pde_dim)
         self.model2 = Nerf_block(in_dim, pose_enc_len, dir_enc_len, ppe_dim, pde_dim)
 
