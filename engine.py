@@ -85,8 +85,8 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     metric_constructor = program_config["metric_map"][task_name]
     criterion = criterion_constructor()
     metric = metric_constructor()
-    for net in network:
-        net.to(device)
+    for i in range(len(network)):
+        network[i] = network[i].to(device)
     # Set up optimizer
     optimizer = select_optimizer(configs, network)
     if checkpoint is not None:

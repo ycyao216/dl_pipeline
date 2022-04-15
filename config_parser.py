@@ -1,7 +1,7 @@
 import pickle
 from tkinter import NE
 
-from datasets import pose_dataset, segment_3d_dataset, cifar_dataset
+from datasets import pose_dataset, segment_3d_dataset, cifar_dataset, nerf_dataset
 from losses import (
     categorical_classification,
     nerf_loss,
@@ -30,7 +30,7 @@ import optuna
 master_config_path = "./main_config.pkl"
 
 master_config_obj = {
-    "database_root": "/datasets/home/home-03/90/690/y8yao/",
+    "database_root": "./",
     "model_map": {
         "resnet": Resnet.Resnet18,
         "vit": Vision_transformer.Vit_custom,
@@ -39,26 +39,27 @@ master_config_obj = {
         "resnet_cifar": Resnet_cifar.Resnet18_cifar,
         "PointNet_pose": PointNet_6dpose.PointNet,
         "PointNet_seg": PointNet_seg.PointNet,
-        "Nerf": Nerf.Nerf_block,
+        "Nerf": Nerf.Leveled_nerf,
     },
     "criterion_map": {
         "classification_cifar100": categorical_classification.cat_class_loss,
         "segmentation_3d": segmentation_3d.seg_3d_loss,
         "segmentation_2d": segmentation_2d.seg_2d_loss,
-        "metric_synthesys": nerf_loss.nerf_loss,
+        "view_synthesys": nerf_loss.nerf_loss,
         "pose_estimation_6d": pose_sym_aware_shape_agno_loss.Error_calculator,
     },
     "metric_map": {
         "classification_cifar100": categorical_classification.cat_class_metric,
         "segmentation_3d": segmentation_3d.seg_3d_metric,
         "segmentation_2d": segmentation_2d.seg_2d_metric,
-        "metric_synthesys": nerf_loss.nerf_metric,
+        "view_synthesys": nerf_loss.nerf_metric,
         "pose_estimation_6d": pose_sym_aware_shape_agno_loss.pose_estimator_metric,
     },
     "datasets": {
         "segmentation_3d": segment_3d_dataset.Segment_3d_dataset,
         "pose_estimation_6d": pose_dataset.PoseDataset,
-        "classification_cifar100": cifar_dataset.cifar_wrapper
+        "classification_cifar100": cifar_dataset.cifar_wrapper,
+        "view_synthesys": nerf_dataset.Nerf_dataset
     },
     "ffcv_writer": {
         "segmentation_3d": segment_3d_dataset.Segment_3d_ffcv_writer,
@@ -81,11 +82,13 @@ master_config_obj = {
         "pose_estimation_6d_with_norm": pose_6d_execute.run_model_with_normalization,
         "pose_estimation_6d_without_norm": pose_6d_execute.run_model_without_normalization,
         "Normal": None,
-        "vit": None
+        "vit": None,
+        "resnet": None
     },
     "pre_preocessing": {
         "pose_estimation_6d": None,
-        "classification_cifar100":None
+        "classification_cifar100":None,
+        "view_synthesys": None
     },
 }
 
