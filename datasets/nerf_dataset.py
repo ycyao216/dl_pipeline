@@ -40,7 +40,7 @@ class Nerf_dataset(Dataset):
         output = output[randid]
         rays = output[...,:6]
         pixel = output[...,6:]
-        return rays.to(device), pixel.to(device)
+        return rays.to(device)[:6400,...], pixel.to(device)[:6400,...]
 
     def __len__(self):
         return len(self.images)

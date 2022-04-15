@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import tqdm 
 
-device = "cpu" 
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 def run_model(data_loader, data_size, optimizer, model, criterion, metric, configs, is_train=0):
     '''
@@ -17,7 +17,7 @@ def run_model(data_loader, data_size, optimizer, model, criterion, metric, confi
     for rays, pixels in data_loader:
         if is_train == 0:
             optimizer.zero_grad(set_to_none=True)
-        corse_ret, fine_ret = render(rays[...,:3],rays[...,3:], model)
+        corse_ret, fine_ret = render(rays[...,:3],rays[...,3:], model,chunk=int(1024*configs["special"]["chunk"]))
         if is_train == 2:
             return fine_ret, None
         loss = criterion(corse_ret, fine_ret, pixels)
@@ -158,7 +158,7 @@ def run_network(inputs, viewdirs, fn, netchunk=1024*64):
     return outputs
 
 #@TODO: Make sure the render arguments are correct
-def render(rays_d, rays_o, model, chunk=1024*32, near=0., far=1.):
+def render(rays_d, rays_o, model, chunk=1024*8, near=0., far=1.):
     viewdirs = rays_d
     viewdirs = viewdirs / torch.linalg.norm(viewdirs, dim=-1, keepdims=True)
     viewdirs = viewdirs.squeeze(0).type(torch.float32)

@@ -2,9 +2,9 @@
     "meta":{
         "execute":true,
         "dataset_path":"./nerf_dataset/bottles",
-        "training_dir_name":"",
-        "validating_dir_name":"",
-        "testing_dir_name":"",
+        "training_dir_name":"./nerf_dataset/bottles",
+        "validating_dir_name":"./nerf_dataset/bottles",
+        "testing_dir_name":"./nerf_dataset/bottles",
         "use_ffcv": false,
         "ffcv_train_name":"cifar_100_train.beton",
         "ffcv_val_name":"cifar_100_val.beton",
@@ -26,8 +26,8 @@
     "experiment":{
         "general":{
             "bz":1,
-            "epoch":2,
-            "lr":0.1,
+            "epoch":100,
+            "lr":5e-4,
             "early_stop":false,
             "es_penalty":0.0
         },
@@ -38,8 +38,8 @@
             "dampening":0.0
         },
         "scheduler":{
-            "lr_scheduler": "linear",
-            "mile_stones":[60,90],
+            "lr_scheduler": "Linear",
+            "mile_stones":[101],
             "gamma":0.1
         }
 
@@ -67,5 +67,8 @@
         "storage": "sqlite:///optuna_results/vit_jitter.db",
         "dataframe_name": "vit_jitter.csv",
         "trial_num":40
+    },
+    "special":{
+        "chunk":2
     }
 }

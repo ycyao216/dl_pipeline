@@ -30,7 +30,7 @@ import optuna
 master_config_path = "./main_config.pkl"
 
 master_config_obj = {
-    "database_root": "",
+    "database_root": "/datasets/home/home-03/90/690/y8yao/",
     "model_map": {
         "resnet": Resnet.Resnet18,
         "vit": Vision_transformer.Vit_custom,
