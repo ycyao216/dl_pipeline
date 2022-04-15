@@ -149,7 +149,7 @@ def main(args):
 config_parser.create_pickle_file()
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--mode", default=0, type=int, help="Execution mode. 0 for train, 1 for plot"
+    "--mode", default=0, type=int, help="Execution mode. 0 for train, 1 for plot, 2 for both train and plot, 3 for visualize outputs, 4 for hyperparameter tuning using optuna, 5 for reteriving resutls of optuna hyperparemeter tuning "
 )
 parser.add_argument(
     "--save_dir",
