@@ -28,8 +28,7 @@ def select_lr_sheculer(configs, optimizer):
         )
     elif "exponential" in configs["experiment"]["scheduler"]["lr_scheduler"].lower():
         scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer = optimizer,
-            gamma = 1-(1e-100)
+            optimizer=optimizer, gamma=1 - (1e-100)
         )
     else:
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer)

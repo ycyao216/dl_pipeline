@@ -10,6 +10,7 @@ import pandas
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
 def init_weights(layer):
     if isinstance(layer, nn.Linear):
         torch.nn.init.xavier_uniform(layer.weight)

@@ -2,6 +2,7 @@ import torch
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
 def run_model_with_normalization(
     data_loader, optimizer, model, criterion, metric, configs, is_train=True
 ):

@@ -9,7 +9,8 @@ import tqdm
 import pickle
 import os
 import optuna
-import ffcv 
+import ffcv
+
 
 def initialize_weights(m):
     if isinstance(m, nn.Conv2d):
@@ -49,13 +50,13 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
         if args.mode == 4:
             print("Hyper parameter tuning, removing finished checkpoint")
             os.remove(checkpoint_path)
-            checkpoint = None 
+            checkpoint = None
     except Exception as e:
         print("Cannot load checkpoint:" + checkpoint_path)
         checkpoint_good_flag = False
 
     try:
-        #@FIXME: Won't work with two model nerf
+        # @FIXME: Won't work with two model nerf
         for i in range(len(network)):
             network[i].load_state_dict(checkpoint["_model_state"][i])
         out_msg = (
@@ -118,13 +119,15 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     try:
         run_function = program_config["run_modules"][model_name]
     except Exception as e:
-        run_function = None 
+        run_function = None
     if run_function is None:
         run_function = run_model
     return network, criterion, metric, optimizer, lr_scheduler, run_function
 
 
-def run_model(data_loader, dataset_size, optimizer, model, criterion, metric, configs, is_train=0):
+def run_model(
+    data_loader, dataset_size, optimizer, model, criterion, metric, configs, is_train=0
+):
     """Train or evaluate a model
 
     Parameters
@@ -177,7 +180,7 @@ def train_model(
     run_model,
     configs=None,
     args=None,
-    trial=None
+    trial=None,
 ):
     """Train the entire model for all epochs
 
@@ -207,7 +210,7 @@ def train_model(
     # Initialize last loss to a large number
     last_loss = float(1e10)
     train_loader, val_loader, test_loader = dataloaders
-    tadl, vdl, tsdl = 0,0,0
+    tadl, vdl, tsdl = 0, 0, 0
     if isinstance(train_loader, torch.utils.data.DataLoader):
         tadl = len(train_loader.dataset)
     elif isinstance(train_loader, ffcv.loader.loader.Loader):
@@ -219,8 +222,8 @@ def train_model(
     if isinstance(test_loader, torch.utils.data.DataLoader):
         tsdl = len(test_loader.dataset)
     elif isinstance(test_loader, ffcv.loader.loader.Loader):
-        tsdl = len(test_loader.indices)    
-    
+        tsdl = len(test_loader.indices)
+
     msg = (
         "Started training for "
         + configs["model_spec"]["model"]
@@ -259,11 +262,11 @@ def train_model(
                 inputfile.close()
         else:
             data = {
-            "training_loss": [],
-            "training_acc": [],
-            "validation_loss": [],
-            "validation_acc": [],
-            "epochs": 0,
+                "training_loss": [],
+                "training_acc": [],
+                "validation_loss": [],
+                "validation_acc": [],
+                "epochs": 0,
             }
     except Exception as e:
         msg = (
@@ -305,11 +308,20 @@ def train_model(
         with torch.no_grad():
             # Evaluate model
             val_loss, val_acc = run_model(
-                val_loader, vdl, optimizer, model, criterion, metric, configs, is_train=1
+                val_loader,
+                vdl,
+                optimizer,
+                model,
+                criterion,
+                metric,
+                configs,
+                is_train=1,
             )
             # Print results every 5 epochs.
             if args.mode != 4:
-                msg = output_msg(val_loss, val_acc, data["epochs"], is_val=True, periodic=5)
+                msg = output_msg(
+                    val_loss, val_acc, data["epochs"], is_val=True, periodic=5
+                )
                 print(msg)
             # Appending validation results
             data["validation_loss"].append(val_loss)
@@ -321,17 +333,17 @@ def train_model(
             last_loss = val_loss
             data["epochs"] = ep + 1
             if trial is not None:
-                trial.report(val_loss, ep+1)
+                trial.report(val_loss, ep + 1)
 
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
-        finished = (ep +1 >= epoch)
+        finished = ep + 1 >= epoch
         torch.save(
             {
                 "_model_state": [m.state_dict() for m in model],
                 "_optm_state": optimizer.state_dict(),
                 "_lr_state": scheduler.state_dict(),
-                "finished": finished
+                "finished": finished,
             },
             checkpoint_path,
         )

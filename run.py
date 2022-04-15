@@ -9,7 +9,7 @@ import config_parser
 import argparse
 import optuna_utils
 import optuna
-import pandas 
+import pandas
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 master_config_path = "./main_config.pkl"
@@ -34,7 +34,7 @@ def cross_validation(main_config, model_config, args, trial=None):
         run_func,
         model_config,
         args,
-        trial
+        trial,
     )
     return loss
 
@@ -58,8 +58,8 @@ def visualize_all(main_config, model_config, args):
 def apply_pre_processing(main_config, model_config, args):
     try:
         func = main_config["pre_preocessing"][model_config["model_spec"]["task"]]
-    except Exception as e: 
-        func = None 
+    except Exception as e:
+        func = None
     if func is not None:
         func(main_config, model_config, args)
 
@@ -84,20 +84,28 @@ def prepend_root_path(root_path, config_obj):
 
 def hyper_tuning(main_config, model_config, args):
     def objective(trial):
-        optuna_utils.optuna_config(trial,model_config=model_config)
-        loss = cross_validation(main_config=main_config, model_config=model_config, args=args, trial=trial)
-        return loss 
+        optuna_utils.optuna_config(trial, model_config=model_config)
+        loss = cross_validation(
+            main_config=main_config, model_config=model_config, args=args, trial=trial
+        )
+        return loss
+
     print(model_config)
     save_name = model_config["optuna"]["save_name"]
     storage = model_config["optuna"]["storage"]
-    study = optuna.create_study(direction="minimize", 
-                                sampler=optuna.samplers.TPESampler(), 
-                                pruner=optuna.pruners.MedianPruner(),
-                                study_name=save_name,
-                                storage=storage,
-                                load_if_exists=True)
-    study.optimize(objective, n_trials = model_config["optuna"]["trial_num"], gc_after_trial=True)
-    return study 
+    study = optuna.create_study(
+        direction="minimize",
+        sampler=optuna.samplers.TPESampler(),
+        pruner=optuna.pruners.MedianPruner(),
+        study_name=save_name,
+        storage=storage,
+        load_if_exists=True,
+    )
+    study.optimize(
+        objective, n_trials=model_config["optuna"]["trial_num"], gc_after_trial=True
+    )
+    return study
+
 
 def main(args):
     if not os.path.exists(args.result_dir):
@@ -118,13 +126,15 @@ def main(args):
                         + model_config["model_spec"]["name"]
                         + "\n=============================\n"
                     )
-                    continue 
+                    continue
                 prepend_root_path(data_root, model_config)
                 apply_pre_processing(main_config, model_config, args)
                 if args.mode == 3:
                     visualize_all(main_config, model_config, args)
                 elif args.mode == 4:
-                    print("Hyperparameter tuning started. Model weight saves may not be the best model")
+                    print(
+                        "Hyperparameter tuning started. Model weight saves may not be the best model"
+                    )
                     study = hyper_tuning(main_config, model_config, args)
                     print(study.best_params)
                     save_name = model_config["optuna"]["dataframe_name"]
@@ -134,11 +144,20 @@ def main(args):
                     study_name = model_config["optuna"]["save_name"]
                     study_storage = model_config["optuna"]["storage"]
                     try:
-                        study_ = optuna.load_study(study_name = study_name, storage=study_storage)
+                        study_ = optuna.load_study(
+                            study_name=study_name, storage=study_storage
+                        )
                         print("Tuning summary for: " + study_name)
                         print(study_.best_trial)
-                    except Exception as e: 
-                        print("Failed to read " + study_name + " stored at " + study_storage +". Due to: " + str(e))
+                    except Exception as e:
+                        print(
+                            "Failed to read "
+                            + study_name
+                            + " stored at "
+                            + study_storage
+                            + ". Due to: "
+                            + str(e)
+                        )
                 else:
                     outputs = cross_validation(main_config, model_config, args)
 
@@ -146,10 +165,14 @@ def main(args):
         utils.generate_all_plots(args.result_dir, args.save_dir)
         utils.generate_all_summary(args.result_dir, args.save_dir, args.summary_name)
 
+
 config_parser.create_pickle_file()
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "--mode", default=0, type=int, help="Execution mode. 0 for train, 1 for plot, 2 for both train and plot, 3 for visualize outputs, 4 for hyperparameter tuning using optuna, 5 for reteriving resutls of optuna hyperparemeter tuning "
+    "--mode",
+    default=0,
+    type=int,
+    help="Execution mode. 0 for train, 1 for plot, 2 for both train and plot, 3 for visualize outputs, 4 for hyperparameter tuning using optuna, 5 for reteriving resutls of optuna hyperparemeter tuning ",
 )
 parser.add_argument(
     "--save_dir",

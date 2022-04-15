@@ -7,6 +7,7 @@ import torch.nn as nn
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
 class segmentation_visualizer:
     def __init__(self, model, test_loader):
         self.model = model
