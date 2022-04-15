@@ -56,7 +56,6 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
         checkpoint_good_flag = False
 
     try:
-        # @FIXME: Won't work with two model nerf
         for i in range(len(network)):
             network[i].load_state_dict(checkpoint["_model_state"][i])
         out_msg = (
@@ -158,7 +157,7 @@ def run_model(
         if is_train == 0:
             optimizer.zero_grad(set_to_none=True)
         outputs = model(batch)
-        if is_train == 2:
+        if is_train == 3:
             return outputs, None
         loss = criterion(outputs, labels)
         cumulative_loss += loss
@@ -167,6 +166,7 @@ def run_model(
             loss.backward()
             optimizer.step()
     return cumulative_loss.item() / dataset_size, metric.epoch_result(dataset_size)
+
 
 
 def train_model(
@@ -267,6 +267,8 @@ def train_model(
                 "validation_loss": [],
                 "validation_acc": [],
                 "epochs": 0,
+                "testing_loss": None,
+                "testing_acc": None 
             }
     except Exception as e:
         msg = (
@@ -347,23 +349,38 @@ def train_model(
             },
             checkpoint_path,
         )
-        with open(pickle_path, "wb") as output:
-            pickle.dump(data, output)
-            output.close()
+        save_pickle(pickle_path, data)
     with torch.no_grad():
         # Test the model on test set
-        test_loss, test_acc = run_model(
-            test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=1
-        )
-        # outputs, _ = run_model(
-        #     test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=2
-        # )
+        if configs["meta"]["has_test_gt"]:
+            test_loss, test_acc = run_model(
+                test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=2
+            )
+            data["testing_loss"] = test_loss
+            data["testing_acc"] = test_acc 
+        else: 
+            outputs, other_save = run_model(
+                test_loader, tsdl, optimizer, model, criterion, metric, configs, is_train=3
+            )
+            if other_save:
+                print("Saving is done by the run function. Please check the config file for save location and data format")
+            if outputs is not None: 
+                name = configs["model_spec"]["name"]
+                save_dir = os.path.join(args.result_dir, name)
+                save_dir += "_outputs.pkl"
+                opt_data = {"model_name" : name, "output": outputs}
+                save_pickle(save_dir, opt_data)
+        save_pickle(pickle_path, data)
         if args.mode != 4:
             msg = output_msg(test_loss, test_acc, data["epochs"])
             print(msg)
     print("Training finished")
     return test_loss
 
+def save_pickle(pickle_path, pkl_obj):
+    with open(pickle_path, "wb") as output:
+        pickle.dump(pkl_obj, output)
+        output.close()
 
 def output_msg(loss, accuracy, epoch, is_val=0, periodic=1):
     status = "Training"

@@ -73,26 +73,10 @@ def get_summary(pkl_file: str) -> tuple:
         training loss, training accuracy, validation loss, validation accuracy
     """
     data = load_pickle(pkl_file)
-    last_t_loss = (
-        data["training_loss"][-1]
-        if len(data["training_loss"]) <= 150
-        else data["training_loss"][149]
-    )
-    last_t_acc = (
-        data["training_acc"][-1]
-        if len(data["training_acc"]) <= 150
-        else data["training_acc"][149]
-    )
-    last_v_loss = (
-        data["validation_loss"][-1]
-        if len(data["validation_loss"]) <= 150
-        else data["validation_loss"][149]
-    )
-    last_v_acc = (
-        data["validation_acc"][-1]
-        if len(data["validation_acc"]) <= 150
-        else data["validation_acc"][149]
-    )
+    last_t_loss = data["training_loss"][-1]
+    last_t_acc = data["training_acc"][-1]
+    last_v_loss = data["validation_loss"][-1]
+    last_v_acc = data["validation_acc"][-1]
     return last_t_loss, last_t_acc, last_v_loss, last_v_acc
 
 
