@@ -66,6 +66,25 @@ class GaussianWrapper(nn.Module):
         x = self.trans(x)
         return x
 
+def prepend_root_path(root_path, config_obj):
+    config_obj["meta"]["training_dir_name"] = os.path.join(
+        root_path, config_obj["meta"]["training_dir_name"]
+    )
+    config_obj["meta"]["validating_dir_name"] = os.path.join(
+        root_path, config_obj["meta"]["validating_dir_name"]
+    )
+    config_obj["meta"]["testing_dir_name"] = os.path.join(
+        root_path, config_obj["meta"]["testing_dir_name"]
+    )
+    config_obj["meta"]["ffcv_train_name"] = os.path.join(
+        root_path, config_obj["meta"]["ffcv_train_name"]
+    )
+    config_obj["meta"]["ffcv_val_name"] = os.path.join(
+        root_path, config_obj["meta"]["ffcv_val_name"]
+    )
+    config_obj["meta"]["ffcv_test_name"] = os.path.join(
+        root_path, config_obj["meta"]["ffcv_test_name"]
+    )
 
 def prepend_root_path(root_path, config_obj):
     config_obj["meta"]["training_dir_name"] = os.path.join(
@@ -138,7 +157,6 @@ def get_dataloader(master_config, config):
         ffcv_dataloader = master_config["ffcv_loader"][config["model_spec"]["task"]](
             config
         )
-
         if not os.path.exists(ffcv_train_path):
             label_writer = ffcv_datawriter.make_writer(ffcv_train_path)
             training_dataset = dataset_constr(config, train=0)

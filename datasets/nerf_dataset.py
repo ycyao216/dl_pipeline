@@ -30,7 +30,6 @@ class Nerf_dataset(Dataset):
         # @NOTE: lazy option
         self.size = 800
         self.train = train
-
     def __getitem__(self, index):
         """
         This implementation should only be used with a batch size of 1.
@@ -58,6 +57,7 @@ class Nerf_dataset(Dataset):
 
     def get_rays(self, H, W, focal, c2w):
         """Get ray origins, directions from a pinhole camera."""
+    def read_images(self,train):
         i, j = torch.meshgrid(
             torch.arange(W, dtype=torch.float32),
             torch.arange(H, dtype=torch.float32),

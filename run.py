@@ -9,7 +9,8 @@ import config_parser
 import argparse
 import optuna_utils
 import optuna
-import pandas
+import pandas 
+import data_utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 master_config_path = "./main_config.pkl"
@@ -64,6 +65,23 @@ def apply_pre_processing(main_config, model_config, args):
         func(main_config, model_config, args)
 
 
+
+def hyper_tuning(main_config, model_config, args):
+    def objective(trial):
+        optuna_utils.optuna_config(trial,model_config=model_config)
+        loss = cross_validation(main_config=main_config, model_config=model_config, args=args, trial=trial)
+        return loss 
+    save_name = model_config["optuna"]["save_name"]
+    storage = model_config["optuna"]["storage"]
+    study = optuna.create_study(direction="minimize", 
+                                sampler=optuna.samplers.TPESampler(), 
+                                pruner=optuna.pruners.SuccessiveHalvingPruner(),
+                                study_name=save_name,
+                                storage=storage,
+                                load_if_exists=True)
+    study.optimize(objective, n_trials = model_config["optuna"]["trial_num"], gc_after_trial=True)
+    return study 
+
 def prepend_root_path(root_path, config_obj):
     config_obj["meta"]["training_dir_name"] = os.path.join(
         root_path, config_obj["meta"]["training_dir_name"]
@@ -80,7 +98,6 @@ def prepend_root_path(root_path, config_obj):
     config_obj["meta"]["ffcv_test_name"] = os.path.join(
         root_path, config_obj["meta"]["ffcv_test_name"]
     )
-
 
 def hyper_tuning(main_config, model_config, args):
     def objective(trial):
@@ -105,7 +122,6 @@ def hyper_tuning(main_config, model_config, args):
         objective, n_trials=model_config["optuna"]["trial_num"], gc_after_trial=True
     )
     return study
-
 
 def main(args):
     if not os.path.exists(args.result_dir):
@@ -164,11 +180,9 @@ def main(args):
             except Exception as e: 
                 print("Failed to execute: " + model_config_pth + " due to: " +str(e))
                 continue 
-
     if args.mode == 2 or args.mode == 1:
         utils.generate_all_plots(args.result_dir, args.save_dir)
         utils.generate_all_summary(args.result_dir, args.save_dir, args.summary_name)
-
 
 config_parser.create_pickle_file()
 parser = argparse.ArgumentParser()
@@ -214,4 +228,5 @@ parser.add_argument(
 args = parser.parse_args()
 
 if __name__ == "__main__":
+    config_parser.create_pickle_file()
     main(args)
