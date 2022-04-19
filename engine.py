@@ -40,6 +40,8 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     model_name = configs["model_spec"]["model"]
     model_constructor = program_config["model_map"][model_name]
     network = model_constructor(configs).get_model()
+    for net in network:
+        net.to(device)
     checkpoint_good_flag = True
     checkpoint_path = (
         os.path.join(args.checkpoint_dir, configs["model_spec"]["name"]) + ".pt"
@@ -54,10 +56,14 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     except Exception as e:
         print("Cannot load checkpoint:" + checkpoint_path)
         checkpoint_good_flag = False
+        checkpoint = None 
 
     try:
         for i in range(len(network)):
             network[i].load_state_dict(checkpoint["_model_state"][i])
+            #@TODO: Temp code: 
+            with open("after_read.txt","w") as outfile:
+                outfile.write(str(checkpoint["_model_state"][i]))
         out_msg = (
             "=============================\n"
             + "=============================\n"
@@ -75,9 +81,9 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
                 + str(e)
                 + ". Training will start from scrach."
             )
+            print(out_msg)
             for net in network:
                 net.apply(initialize_weights)
-            print(out_msg)
             checkpoint_good_flag = False
 
     task_name = configs["model_spec"]["task"]
@@ -118,9 +124,10 @@ def prepare_model(device, program_config, configs=None, args=None) -> tuple:
     try:
         run_function = program_config["run_modules"][model_name]
     except Exception as e:
-        run_function = None
+        run_function = run_model
     if run_function is None:
         run_function = run_model
+
     return network, criterion, metric, optimizer, lr_scheduler, run_function
 
 
@@ -340,6 +347,10 @@ def train_model(
                 if trial.should_prune():
                     raise optuna.exceptions.TrialPruned()
         finished = ep + 1 >= epoch
+        #TODO: Temp code 
+        with open("weight_save.txt","w") as outfile:
+            for m in model: 
+                outfile.write(str(m.state_dict()))
         torch.save(
             {
                 "_model_state": [m.state_dict() for m in model],
