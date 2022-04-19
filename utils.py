@@ -77,7 +77,16 @@ def get_summary(pkl_file: str) -> tuple:
     last_t_acc = data["training_acc"][-1]
     last_v_loss = data["validation_loss"][-1]
     last_v_acc = data["validation_acc"][-1]
-    return last_t_loss, last_t_acc, last_v_loss, last_v_acc
+    try:
+        test_acc = data["testing_acc"]
+        test_loss = data["testing_loss"]
+    except: 
+        print("Does not contain test results. May be an old version of save file. Omitted")
+        test_acc = "N/a"
+        test_loss ="N/a"
+
+    epochs = data["epochs"]
+    return last_t_loss, last_t_acc, last_v_loss, last_v_acc, test_acc, test_loss, epochs
 
 
 def generate_all_summary(pkl_file_dir, save_directory, save_name):
@@ -92,13 +101,13 @@ def generate_all_summary(pkl_file_dir, save_directory, save_name):
     for i in os.listdir(pkl_file_dir):
         name = os.path.join(pkl_file_dir, i)
         if ".pkl" in i:
-            tl, ta, vl, va = get_summary(name)
+            tl, ta, vl, va , t_loss, t_acc, ep= get_summary(name)
             tl = tl.item() if not isinstance(tl, float) else tl
             ta = ta.item() if not isinstance(ta, float) else ta
             vl = vl.item() if not isinstance(vl, float) else vl
             va = va.item() if not isinstance(va, float) else va
-            msg = "Result of {}:\n Training loss {};\n Training accuracy{};\n Validating loss {};\n Validating accuracy{}\n================================\n".format(
-                name, str(tl), str(ta), str(vl), str(va)
+            msg = "Result of {}:\n Last Training loss {};\n Last Training accuracy{};\n Last Validating loss {};\n Last Validating accuracy{}\n Testing loss{} \n Testing Accuracy{} \n Finished epoch: {}\n================================\n".format(
+                name, str(tl), str(ta), str(vl), str(va), str(t_loss), str(t_acc), str(ep)
             )
             print(msg)
             output_file.write(msg)
