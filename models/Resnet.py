@@ -57,7 +57,7 @@ class BuildingBlock(nn.Module):
         self.building_block = nn.Sequential(
             self.first_conv,
             nn.BatchNorm2d(out_dim),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_dim),
         )
@@ -65,13 +65,11 @@ class BuildingBlock(nn.Module):
             in_channel, out_dim, kernel_size=1, stride=2, bias=False
         )
         self.short_cut_bn = nn.BatchNorm2d(out_dim)
+        self.rlu =nn.ReLU(inplace=True)
 
     def forward(self, x):
-        residual = torch.clone(x)
-        x = self.building_block(x)
         if self.down_sample:
-            residual = self.short_cut_conv(residual)
-            residual = self.short_cut_bn(residual)
-        x = x + residual
-        x = nn.ReLU()(x)
-        return x
+            x = self.building_block(x)+ self.short_cut_bn(self.short_cut_conv(x))
+        else: 
+            x = self.building_block(x) + x
+        return self.rlu(x)

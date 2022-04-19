@@ -13,6 +13,7 @@
 # from ffcv.fields.decoders import IntDecoder, SimpleRGBImageDecoder
 # from ffcv.loader import OrderOption
 # from ffcv.transforms.common import Squeeze
+from csv import writer
 from torchvision import transforms
 import torch
 import torch.nn as nn
@@ -174,8 +175,6 @@ def get_dataloader(master_config, config):
                 )
             label_writer.from_indexed_dataset(training_dataset)
         if not os.path.exists(ffcv_val_path):
-            label_writer = ffcv_datawriter.make_writer(ffcv_val_path)
-            validating_dataset = None
             if config["data"]["train_fraction"] != 1.0:
                 train_set_len = int(
                     len(training_dataset) * config["data"]["train_fraction"]
@@ -189,11 +188,18 @@ def get_dataloader(master_config, config):
                 or config["meta"]["validating_dir_name"] != ""
             ):
                 validating_dataset = dataset_constr(config, train=1)
-            label_writer.from_indexed_dataset(validating_dataset)
+            else: 
+                validating_dataset = None
+
         if not os.path.exists(ffcv_test_path):
             non_label_writer = ffcv_datawriter.make_writer(ffcv_test_path)
             testing_dataset = dataset_constr(config, train=2)
             non_label_writer.from_indexed_dataset(testing_dataset)
+
+        label_writer = ffcv_datawriter.make_writer(ffcv_val_path)
+        if validating_dataset is None: 
+            validating_dataset = dataset_constr(config, train=2)
+        label_writer.from_indexed_dataset(validating_dataset)
 
         train_loader = ffcv_dataloader.make_loader(ffcv_train_path, config)
         val_loader = ffcv_dataloader.make_loader(ffcv_val_path, config)
