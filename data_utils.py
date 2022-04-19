@@ -68,45 +68,24 @@ class GaussianWrapper(nn.Module):
         return x
 
 def prepend_root_path(root_path, config_obj):
-    config_obj["meta"]["training_dir_name"] = os.path.join(
+    config_obj["meta"]["training_dir_name"] = str(pathlib.PurePath(os.path.join(
         root_path, config_obj["meta"]["training_dir_name"]
-    )
-    config_obj["meta"]["validating_dir_name"] = os.path.join(
+    )))
+    config_obj["meta"]["validating_dir_name"] = str(pathlib.PurePath(os.path.join(
         root_path, config_obj["meta"]["validating_dir_name"]
-    )
-    config_obj["meta"]["testing_dir_name"] = os.path.join(
+    )))
+    config_obj["meta"]["testing_dir_name"] = str(pathlib.PurePath(os.path.join(
         root_path, config_obj["meta"]["testing_dir_name"]
-    )
-    config_obj["meta"]["ffcv_train_name"] = os.path.join(
+    )))
+    config_obj["meta"]["ffcv_train_name"] = str(pathlib.PurePath(os.path.join(
         root_path, config_obj["meta"]["ffcv_train_name"]
-    )
-    config_obj["meta"]["ffcv_val_name"] = os.path.join(
+    )))
+    config_obj["meta"]["ffcv_val_name"] = str(pathlib.PurePath(os.path.join(
         root_path, config_obj["meta"]["ffcv_val_name"]
-    )
-    config_obj["meta"]["ffcv_test_name"] = os.path.join(
+    )))
+    config_obj["meta"]["ffcv_test_name"] = str(pathlib.PurePath(os.path.join(
         root_path, config_obj["meta"]["ffcv_test_name"]
-    )
-
-def prepend_root_path(root_path, config_obj):
-    config_obj["meta"]["training_dir_name"] = os.path.join(
-        root_path, config_obj["meta"]["training_dir_name"]
-    )
-    config_obj["meta"]["validating_dir_name"] = os.path.join(
-        root_path, config_obj["meta"]["validating_dir_name"]
-    )
-    config_obj["meta"]["testing_dir_name"] = os.path.join(
-        root_path, config_obj["meta"]["testing_dir_name"]
-    )
-    config_obj["meta"]["ffcv_train_name"] = os.path.join(
-        root_path, config_obj["meta"]["ffcv_train_name"]
-    )
-    config_obj["meta"]["ffcv_val_name"] = os.path.join(
-        root_path, config_obj["meta"]["ffcv_val_name"]
-    )
-    config_obj["meta"]["ffcv_test_name"] = os.path.join(
-        root_path, config_obj["meta"]["ffcv_test_name"]
-    )
-
+    )))
 
 def get_dataloader(master_config, config):
     data_base_root = pathlib.Path(
@@ -115,10 +94,10 @@ def get_dataloader(master_config, config):
     prepend_root_path(data_base_root, config)
     dataset_constr = master_config["datasets"][config["model_spec"]["task"]]
     training_dataset, testing_dataset, validating_dataset = None, None, None
-    ffcv_train_path = os.path.join(data_base_root, config["meta"]["ffcv_train_name"])
-    ffcv_val_path = os.path.join(data_base_root, config["meta"]["ffcv_val_name"])
-    ffcv_test_path = os.path.join(data_base_root, config["meta"]["ffcv_test_name"])
-    if config["data"]["train_fraction"] != 1.0:
+    ffcv_train_path = config["meta"]["ffcv_train_name"]
+    ffcv_val_path = config["meta"]["ffcv_val_name"]
+    ffcv_test_path = config["meta"]["ffcv_test_name"]
+    if config["data"]["train_fraction"] == 1.0:
         ffcv_val_path = ffcv_test_path
 
     if config["meta"]["use_ffcv"] == False:
@@ -167,13 +146,21 @@ def get_dataloader(master_config, config):
                 indices = indices[
                     : int(len(training_dataset) * config["data"]["subset_fraction"])
                 ]
-                training_dataset = torch.utils.data.Subset(training_dataset, indices)
+                training_dataset_sub = torch.utils.data.Subset(training_dataset, indices)
                 print(
                     "Training dataset will contain {} samples.".format(
-                        str(len(training_dataset))
+                        str(len(training_dataset_sub))
                     )
                 )
-            label_writer.from_indexed_dataset(training_dataset)
+                label_writer.from_indexed_dataset(training_dataset_sub)
+            else: 
+                label_writer.from_indexed_dataset(training_dataset)
+
+        if not os.path.exists(ffcv_test_path):
+            non_label_writer = ffcv_datawriter.make_writer(ffcv_test_path)
+            testing_dataset = dataset_constr(config, train=2)
+            non_label_writer.from_indexed_dataset(testing_dataset)
+
         if not os.path.exists(ffcv_val_path):
             if config["data"]["train_fraction"] != 1.0:
                 train_set_len = int(
@@ -189,17 +176,9 @@ def get_dataloader(master_config, config):
             ):
                 validating_dataset = dataset_constr(config, train=1)
             else: 
-                validating_dataset = None
-
-        if not os.path.exists(ffcv_test_path):
-            non_label_writer = ffcv_datawriter.make_writer(ffcv_test_path)
-            testing_dataset = dataset_constr(config, train=2)
-            non_label_writer.from_indexed_dataset(testing_dataset)
-
-        label_writer = ffcv_datawriter.make_writer(ffcv_val_path)
-        if validating_dataset is None: 
-            validating_dataset = dataset_constr(config, train=2)
-        label_writer.from_indexed_dataset(validating_dataset)
+                validating_dataset = testing_dataset
+            label_writer = ffcv_datawriter.make_writer(ffcv_val_path)
+            label_writer.from_indexed_dataset(validating_dataset)
 
         train_loader = ffcv_dataloader.make_loader(ffcv_train_path, config)
         val_loader = ffcv_dataloader.make_loader(ffcv_val_path, config)

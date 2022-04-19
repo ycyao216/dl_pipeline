@@ -57,7 +57,7 @@ class BuildingBlock(nn.Module):
         self.building_block = nn.Sequential(
             self.first_conv,
             nn.BatchNorm2d(out_dim),
-            nn.ReLU(inplace=True),
+            nn.ReLU(),
             nn.Conv2d(out_dim, out_dim, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_dim),
         )
